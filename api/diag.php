@@ -50,6 +50,12 @@ try {
     echo "host          : $host\n";
     echo "database      : $db\n";
     $dsn = "pgsql:host=$host;port=$port;dbname=$db;sslmode=require";
+    // Neon sem SNI: injeta o endpoint id (primeiro rótulo do host, sem -pooler).
+    if (str_contains($host, 'neon.tech')) {
+        $endpoint = str_replace('-pooler', '', explode('.', $host)[0]);
+        $dsn .= ";options=endpoint=$endpoint";
+        echo "endpoint      : $endpoint\n";
+    }
     $pdo = new PDO($dsn, $user, $pass, [PDO::ATTR_TIMEOUT => 8, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     $users = $pdo->query('select count(*) from users')->fetchColumn();
     $sessions = $pdo->query("select count(*) from information_schema.tables where table_name='sessions'")->fetchColumn();

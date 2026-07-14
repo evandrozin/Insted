@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Database\NeonPostgresConnector;
 use App\Models\User;
 use App\Support\Permissions;
 use Illuminate\Pagination\Paginator;
@@ -15,7 +16,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Conector Postgres compatível com a Neon em runtimes sem SNI (Vercel).
+        $this->app->bind('db.connector.pgsql', NeonPostgresConnector::class);
     }
 
     /**
