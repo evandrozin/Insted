@@ -5,6 +5,11 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
+// Mostra erros fatais de PHP diretamente (útil para diagnosticar o deploy).
+// A renderização de exceções do Laravel continua controlada por APP_DEBUG.
+ini_set('display_errors', '1');
+error_reporting(E_ALL);
+
 /*
  * Entrypoint da Vercel (runtime PHP da comunidade).
  *
