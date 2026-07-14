@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Support\Permissions;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -26,6 +27,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Paginator::defaultView('vendor.pagination.insted');
+
+        // Em produção (Vercel), força HTTPS na geração de URLs/forms/assets.
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
 
         // Admin tem acesso irrestrito a qualquer habilidade.
         Gate::before(fn (User $user) => $user->is_admin ? true : null);
