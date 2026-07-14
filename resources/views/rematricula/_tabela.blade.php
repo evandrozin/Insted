@@ -36,7 +36,7 @@
                     @foreach ($statusCols as $st)
                         <th class="num" style="color:{{ $corHex[$statusCor($st)] }};">{{ $st }}</th>
                     @endforeach
-                    <th class="num" style="color:#0ea5e9;" title="Ingressantes: alunos novos no próximo período (ATIVA/AGUARDANDO), fora da coorte de rematrícula.">Novos</th>
+                    <th class="num" style="color:#0ea5e9;" title="Novos: alunos ATIVA/AGUARDANDO no próximo período que não estavam ativos no anterior (ingressantes + retornantes).">Novos</th>
                     <th class="num">% Remat.</th>
                 </tr>
             </thead>
@@ -59,6 +59,7 @@
                         @foreach ($statusCols as $st)
                             <td class="num">{{ ($linha['status'][$st] ?? 0) ? number_format($linha['status'][$st], 0, ',', '.') : '·' }}</td>
                         @endforeach
+                        <td class="num" style="color:#0ea5e9;font-weight:600;">{{ ($linha['novos'] ?? 0) ? number_format($linha['novos'], 0, ',', '.') : '·' }}</td>
                         <td class="num"><span class="badge {{ $taxa >= 70 ? 'ok' : ($taxa >= 40 ? 'warn' : 'err') }}">{{ $taxa }}%</span></td>
                     </tr>
                 @empty
@@ -84,6 +85,7 @@
                         @foreach ($statusCols as $st)
                             <td class="num">{{ number_format($totais[$st] ?? 0, 0, ',', '.') }}</td>
                         @endforeach
+                        <td class="num" style="color:#0ea5e9;">{{ number_format($totais['novos'] ?? 0, 0, ',', '.') }}</td>
                         <td class="num">{{ $taxaT }}%</td>
                     </tr>
                 </tfoot>

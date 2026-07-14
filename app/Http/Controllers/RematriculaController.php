@@ -79,15 +79,10 @@ class RematriculaController extends Controller
             }
         }
 
-        // Novos alunos: ingressantes no próximo período. Como não há campo de
-        // "período de ingresso", considera-se novo o aluno cujo período mais
-        // antigo de matrícula é o próprio próximo (não possui matrícula em
-        // nenhum período cronologicamente anterior a ele).
-        $periodosAntesDoProximo = $this->periodosAntesDe($idProximo);
-        $alunosComHistorico = $periodosAntesDoProximo
-            ? DB::table('matriculas')->whereIn('id_periodo_letivo', $periodosAntesDoProximo)
-                ->distinct()->pluck('id_aluno')->flip()
-            : collect();
+        // Novos alunos: alunos ATIVA/AGUARDANDO no próximo período que NÃO
+        // estavam ATIVOS no período anterior (ou seja, fora da coorte de
+        // rematrícula). Inclui ingressantes e também retornantes.
+        $coorteAlunos = collect($coorte)->pluck('id_aluno')->flip();
 
         // Inadimplência: títulos vencidos em aberto do período anterior E de
         // períodos anteriores a ele (dívida acumulada). O corte é cronológico,
@@ -154,8 +149,8 @@ class RematriculaController extends Controller
                 $statusProx, $inad, $valorInad, $formando);
         }
 
-        // Novos alunos (ingressantes): matrículas ATIVA/AGUARDANDO no próximo
-        // período de alunos sem histórico anterior. Entram numa coluna própria,
+        // Novos alunos: matrículas ATIVA/AGUARDANDO no próximo período de alunos
+        // fora da coorte (não ATIVOS no anterior). Entram numa coluna própria,
         // por curso/turma do próximo período — fora dos status de rematrícula.
         $addNovo = function (array &$pivot, array &$tot, string $chave, array $meta) {
             if (! isset($pivot[$chave])) {
@@ -169,8 +164,8 @@ class RematriculaController extends Controller
             if (! in_array($r->status, ['ATIVA', 'AGUARDANDO'], true)) {
                 continue;
             }
-            if ($alunosComHistorico->has($r->id_aluno)) {
-                continue; // já esteve matriculado antes — não é novo
+            if ($coorteAlunos->has($r->id_aluno)) {
+                continue; // estava ATIVO no anterior (coorte) — é rematrícula, não novo
             }
 
             $addNovo($porCurso, $totCurso,
@@ -252,38 +247,6 @@ class RematriculaController extends Controller
         return $ids;
     }
 
-    /**
-     * IDs dos períodos letivos cronologicamente ANTERIORES ao período informado
-     * (data_inicio estritamente menor). Usado para detectar ingressantes.
-     *
-     * @return list<int>
-     */
-    protected function periodosAntesDe(int $idPeriodo): array
-    {
-        $ref = DB::table('periodos_letivos')
-            ->where('id_periodo_letivo', $idPeriodo)
-            ->first(['data_inicio', 'ano', 'semestre']);
-
-        if (! $ref) {
-            return [];
-        }
-
-        $q = DB::table('periodos_letivos')->where('id_periodo_letivo', '!=', $idPeriodo);
-
-        if (! empty($ref->data_inicio)) {
-            $q->where('data_inicio', '<', $ref->data_inicio);
-        } else {
-            $q->where(function ($w) use ($ref) {
-                $w->where('ano', '<', $ref->ano)
-                    ->orWhere(function ($w2) use ($ref) {
-                        $w2->where('ano', $ref->ano)->where('semestre', '<', $ref->semestre ?? 0);
-                    });
-            });
-        }
-
-        return $q->pluck('id_periodo_letivo')->map(fn ($v) => (int) $v)->all();
-    }
-
     /** Valida os períodos escolhidos e devolve o par [anterior, proximo] ou null. */
     protected function periodosSelecionados(Request $request): ?array
     {
@@ -307,7 +270,7 @@ class RematriculaController extends Controller
         $colunas = array_merge(
             ['Nível', 'Curso', 'Turma'],
             $statusCols,
-            ['Poss. formandos', 'Base rematrícula', 'Adimplentes', 'Inadimplentes', 'Valor inadimplente', 'Total']
+            ['Novos alunos', 'Poss. formandos', 'Base rematrícula', 'Adimplentes', 'Inadimplentes', 'Valor inadimplente', 'Total']
         );
 
         $linha = function (string $nivel, array $r) use ($statusCols) {
@@ -315,6 +278,7 @@ class RematriculaController extends Controller
             foreach ($statusCols as $s) {
                 $cols[] = $r['status'][$s] ?? 0;
             }
+            $cols[] = $r['novos'] ?? 0;
             $cols[] = $r['formandos'] ?? 0;
             $cols[] = $r['base_remat'] ?? 0;
             $cols[] = $r['adimpl'] ?? 0;

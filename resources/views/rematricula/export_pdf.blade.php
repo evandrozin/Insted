@@ -21,6 +21,7 @@
         <div class="kpi"><div class="l">Base rematrícula</div><div class="v">{{ $n($resumo['base_remat']) }}</div></div>
         <div class="kpi"><div class="l">Rematriculados</div><div class="v">{{ $n($resumo['rematriculados']) }}</div></div>
         <div class="kpi"><div class="l">Não rematricularam</div><div class="v">{{ $n($resumo['nao_rematriculou']) }}</div></div>
+        <div class="kpi"><div class="l">Novos alunos</div><div class="v">{{ $n($resumo['novos_alunos'] ?? 0) }}</div></div>
         <div class="kpi"><div class="l">Taxa</div><div class="v">{{ $resumo['taxa'] }}%</div></div>
         <div class="kpi"><div class="l">Inadimplentes</div><div class="v">{{ $n($resumo['alunos_inadimplentes']) }}</div></div>
         <div class="kpi"><div class="l">Valor inadimplente</div><div class="v" style="font-size:14px;">{{ $money($resumo['valor_inadimplente']) }}</div></div>
@@ -35,6 +36,7 @@
                     <th>{{ $temTurma ? 'Turma' : 'Curso' }}</th>
                     @if ($temTurma) <th>Curso</th> @endif
                     @foreach ($statusCols as $s) <th class="num">{{ $s }}</th> @endforeach
+                    <th class="num">Novos</th>
                     <th class="num">Formandos</th>
                     <th class="num">Base</th>
                     <th class="num">Inadimpl.</th>
@@ -47,6 +49,7 @@
                         <td>{{ $temTurma ? ($r['turma'] ?? '') : ($r['curso'] ?? '') }}</td>
                         @if ($temTurma) <td>{{ $r['curso'] ?? '' }}</td> @endif
                         @foreach ($statusCols as $s) <td class="num">{{ $n($r['status'][$s] ?? 0) }}</td> @endforeach
+                        <td class="num">{{ $n($r['novos'] ?? 0) }}</td>
                         <td class="num">{{ $n($r['formandos'] ?? 0) }}</td>
                         <td class="num">{{ $n($r['base_remat'] ?? 0) }}</td>
                         <td class="num">{{ $n($r['inadimpl'] ?? 0) }}</td>

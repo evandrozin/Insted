@@ -78,6 +78,7 @@
                     ['Base rematrícula', number_format($resumo['base_remat'],0,',','.'), '#119c97'],
                     ['Rematriculados', number_format($resumo['rematriculados'],0,',','.'), '#17a34a'],
                     ['Não rematricularam', number_format($resumo['nao_rematriculou'],0,',','.'), '#e5484d'],
+                    ['Novos alunos (próximo)', number_format($resumo['novos_alunos'] ?? 0,0,',','.'), '#0ea5e9'],
                     ['Taxa de rematrícula', $resumo['taxa'].'%', '#2C2F36'],
                     ['Adimplentes (ant.)', number_format($resumo['adimplentes'],0,',','.'), '#17a34a'],
                     ['Inadimplentes (ant.)', number_format($resumo['inadimplentes'],0,',','.'), '#e5484d'],
