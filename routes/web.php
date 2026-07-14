@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ApiParametroController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CursoBaseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\IngestaoController;
 use App\Http\Controllers\MatriculaController;
@@ -24,9 +25,12 @@ Route::middleware('auth')->group(function () {
     // Acadêmico — Matrículas
     Route::middleware('can:'.Permissions::MATRICULAS_VER)->group(function () {
         Route::get('/matriculas', [MatriculaController::class, 'index'])->name('matriculas.index');
-        Route::get('/matriculas/exportar/excel', [MatriculaController::class, 'exportarExcel'])->name('matriculas.exportar.excel');
-        Route::get('/matriculas/exportar/pdf', [MatriculaController::class, 'exportarPdf'])->name('matriculas.exportar.pdf');
+        Route::get('/matriculas/exportar/{visao}/{formato}', [MatriculaController::class, 'exportar'])
+            ->whereIn('visao', ['lista', 'curso', 'turma'])
+            ->whereIn('formato', ['excel', 'pdf'])
+            ->name('matriculas.exportar');
         Route::get('/matriculas/{matricula}', [MatriculaController::class, 'show'])->name('matriculas.show');
+        Route::get('/cursos', [CursoBaseController::class, 'index'])->name('cursos.index');
     });
 
     // Acadêmico — Rematrícula

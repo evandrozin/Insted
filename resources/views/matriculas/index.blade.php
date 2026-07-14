@@ -67,20 +67,11 @@
                     </select>
                 </div>
                 <div class="field">
-                    <label>Ano</label>
-                    <select name="ano">
-                        <option value="">Todos</option>
-                        @foreach ($anos as $ano)
-                            <option value="{{ $ano }}" @selected(request('ano') == $ano)>{{ $ano }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="field">
                     <label>Curso</label>
                     <select name="curso">
                         <option value="">Todos</option>
                         @foreach ($cursos as $c)
-                            <option value="{{ $c->id_curso_base }}" @selected(request('curso') == $c->id_curso_base)>{{ $c->nome_impressao }}</option>
+                            <option value="{{ $c->id_curso_base }}" @selected(request('curso') == $c->id_curso_base)>{{ $c->nome_impressao }}{{ $c->modalidade ? ' - '.$c->modalidade : '' }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -101,40 +92,65 @@
         </div>
     </div>
 
-    <div class="card">
+    {{-- 1) Sintético por Unidade → Curso --}}
+    @include('matriculas._sintetico', [
+        'titulo' => 'Sintético por Curso',
+        'visao' => 'curso',
+        'dimensoes' => $dimCurso,
+        'rows' => $sinteticoCurso,
+        'totais' => $sinteticoCursoTotais,
+        'statusColunas' => $statusColunas,
+        'statusCor' => $statusCor,
+        'corHex' => $corHex,
+    ])
+
+    {{-- 2) Sintético por Unidade → Curso → Turma --}}
+    @include('matriculas._sintetico', [
+        'titulo' => 'Sintético por Turma',
+        'visao' => 'turma',
+        'dimensoes' => $dimTurma,
+        'rows' => $sintetico,
+        'totais' => $sinteticoTotais,
+        'statusColunas' => $statusColunas,
+        'statusCor' => $statusCor,
+        'corHex' => $corHex,
+    ])
+
+    {{-- 3) Relação de alunos (lista detalhada) --}}
+    <div class="card" style="margin-top:22px;">
         <div class="card-h">
             <h2>{{ number_format($matriculas->total(), 0, ',', '.') }} matrícula(s)</h2>
             <div class="page-actions">
-                <a class="btn ghost" href="{{ route('matriculas.exportar.excel', request()->query()) }}">⬇ Excel</a>
-                <a class="btn ghost" href="{{ route('matriculas.exportar.pdf', request()->query()) }}" target="_blank">⬇ PDF</a>
+                <a class="btn ghost" href="{{ route('matriculas.exportar', array_merge(['visao' => 'lista', 'formato' => 'excel'], request()->query())) }}">⬇ Excel</a>
+                <a class="btn ghost" href="{{ route('matriculas.exportar', array_merge(['visao' => 'lista', 'formato' => 'pdf'], request()->query())) }}" target="_blank">⬇ PDF</a>
             </div>
         </div>
         <div class="table-wrap">
             <table>
                 <thead>
                     <tr>
-                        <th>RA</th>
-                        <th>Aluno</th>
+                        <th>Unidade</th>
                         <th>Curso</th>
                         <th>Turma</th>
+                        <th>RA</th>
+                        <th>Aluno</th>
                         <th>Período</th>
                         <th>Status</th>
-                        <th>Unidade</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($matriculas as $m)
                         <tr>
+                            <td>{{ $m->unidade_fisica }}</td>
+                            <td>{{ $m->curso }}</td>
+                            <td>{{ $m->turma }}</td>
                             <td class="mono">{{ $m->ra }}</td>
                             <td>
                                 <a href="{{ route('matriculas.show', $m->id_matricula) }}">{{ $m->aluno }}</a>
                                 <div class="muted" style="font-size:11.5px;">{{ $m->aluno_email }}</div>
                             </td>
-                            <td>{{ $m->curso }}</td>
-                            <td>{{ $m->turma }}</td>
                             <td>{{ $m->periodo_letivo }}</td>
                             <td><span class="badge {{ $statusCor($m->status) }}">{{ $m->status ?: '—' }}</span></td>
-                            <td>{{ $m->unidade_fisica }}</td>
                         </tr>
                     @empty
                         <tr><td colspan="7"><div class="empty"><div class="big">▤</div>Nenhuma matrícula encontrada.<br><span style="font-size:13px;">Rode a <a href="{{ route('ingestao.index') }}">sincronização</a> para importar do JACAD.</span></div></td></tr>
@@ -146,32 +162,4 @@
             <div class="card-b">{{ $matriculas->links() }}</div>
         @endif
     </div>
-
-    {{-- Sintético por Curso (entre o geral e o por turma) --}}
-    @include('matriculas._sintetico', [
-        'titulo' => 'Sintético por Curso',
-        'rows' => $sinteticoCurso,
-        'totais' => $sinteticoCursoTotais,
-        'filtroParam' => 'curso',
-        'labelCol' => 'Curso',
-        'mostrarExtra' => false,
-        'extraCol' => null,
-        'statusColunas' => $statusColunas,
-        'statusCor' => $statusCor,
-        'corHex' => $corHex,
-    ])
-
-    {{-- Sintético por Turma --}}
-    @include('matriculas._sintetico', [
-        'titulo' => 'Sintético por Turma',
-        'rows' => $sintetico,
-        'totais' => $sinteticoTotais,
-        'filtroParam' => 'turma',
-        'labelCol' => 'Turma',
-        'mostrarExtra' => true,
-        'extraCol' => 'Curso',
-        'statusColunas' => $statusColunas,
-        'statusCor' => $statusCor,
-        'corHex' => $corHex,
-    ])
 @endsection

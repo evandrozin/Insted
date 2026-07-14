@@ -5,29 +5,40 @@ namespace App\Http\Controllers;
 use App\Models\IngestaoLog;
 use App\Models\Matricula;
 use App\Models\PeriodoLetivo;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $totalMatriculas = Matricula::count();
+        $periodos = PeriodoLetivo::orderByDesc('ano')->orderByDesc('semestre')
+            ->get(['id_periodo_letivo', 'descricao', 'org_descricao', 'ano', 'semestre']);
+
+        // Período selecionado: por padrão o mais recente (os números só fazem
+        // sentido período a período). "todos" mostra o agregado geral.
+        $periodoSel = $request->input('periodo');
+        if ($periodoSel === null || $periodoSel === '') {
+            $periodoSel = optional($periodos->first())->id_periodo_letivo;
+        }
+        $filtrar = $periodoSel !== 'todos' && $periodoSel !== null;
+        $periodoAtual = $filtrar ? $periodos->firstWhere('id_periodo_letivo', (int) $periodoSel) : null;
+
+        // Query base de matrículas já escopada ao período (quando aplicável).
+        $scoped = fn (): Builder => Matricula::query()
+            ->when($filtrar, fn ($q) => $q->where('id_periodo_letivo', $periodoSel));
+
+        $totalMatriculas = $scoped()->count();
         $totalPeriodos = PeriodoLetivo::count();
         $totalAnos = PeriodoLetivo::whereNotNull('ano')->distinct()->count('ano');
         $ultimaSync = IngestaoLog::latest('id')->first();
 
-        $porStatus = Matricula::select('status', DB::raw('count(*) as total'))
+        $porStatus = $scoped()->select('status', DB::raw('count(*) as total'))
             ->groupBy('status')->orderByDesc('total')->get();
 
-        $porAno = Matricula::query()
-            ->join('periodos_letivos', 'matriculas.id_periodo_letivo', '=', 'periodos_letivos.id_periodo_letivo')
-            ->select('periodos_letivos.ano', DB::raw('count(*) as total'))
-            ->whereNotNull('periodos_letivos.ano')
-            ->groupBy('periodos_letivos.ano')
-            ->orderBy('periodos_letivos.ano', 'desc')
-            ->get();
-
-        // Granularidade por período letivo (1º/2º semestre e especiais separados).
+        // Visão geral por período letivo (sempre todos — serve de panorama e
+        // de navegação; o período selecionado é destacado).
         $porPeriodo = Matricula::query()
             ->join('periodos_letivos', 'matriculas.id_periodo_letivo', '=', 'periodos_letivos.id_periodo_letivo')
             ->select(
@@ -47,7 +58,8 @@ class DashboardController extends Controller
 
         return view('dashboard', compact(
             'totalMatriculas', 'totalPeriodos', 'totalAnos',
-            'ultimaSync', 'porStatus', 'porAno', 'porPeriodo'
+            'ultimaSync', 'porStatus', 'porPeriodo',
+            'periodos', 'periodoSel', 'periodoAtual', 'filtrar'
         ));
     }
 }

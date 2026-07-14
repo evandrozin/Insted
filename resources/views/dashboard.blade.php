@@ -2,10 +2,36 @@
 @section('titulo', 'Dashboard')
 
 @section('conteudo')
+    @php
+        $rotuloPeriodo = $periodoAtual
+            ? $periodoAtual->descricao.' · '.\Illuminate\Support\Str::of($periodoAtual->org_descricao)->title()
+            : 'Todos os períodos';
+    @endphp
+
+    {{-- Filtro de período: os números só fazem sentido período a período. --}}
+    <div class="card" style="margin-bottom:18px;">
+        <div class="card-b">
+            <form method="GET" action="{{ route('dashboard') }}" class="filters">
+                <div class="field" style="min-width:320px;">
+                    <label>Período letivo</label>
+                    <select name="periodo" onchange="this.form.submit()">
+                        <option value="todos" @selected(! $filtrar)>Todos os períodos (agregado)</option>
+                        @foreach ($periodos as $p)
+                            <option value="{{ $p->id_periodo_letivo }}" @selected($filtrar && (int) $periodoSel === $p->id_periodo_letivo)>
+                                {{ $p->descricao }} · {{ \Illuminate\Support\Str::of($p->org_descricao)->title() }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <div class="hint">Exibindo: <strong>{{ $rotuloPeriodo }}</strong></div>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="grid cols-4" style="margin-bottom:22px;">
         <div class="card stat">
             <div class="ico">▤</div>
-            <div class="label">Matrículas</div>
+            <div class="label">Matrículas <span class="muted" style="text-transform:none;font-weight:600;">· {{ $filtrar ? $periodoAtual->descricao : 'total' }}</span></div>
             <div class="value">{{ number_format($totalMatriculas, 0, ',', '.') }}</div>
         </div>
         <div class="card stat">
@@ -39,9 +65,10 @@
             <div class="card-b">
                 @php $maxPer = $porPeriodo->max('total') ?: 1; @endphp
                 @forelse ($porPeriodo as $linha)
-                    <div style="margin-bottom:12px;">
+                    @php $ativo = $filtrar && (int) $periodoSel === $linha->id_periodo_letivo; @endphp
+                    <div style="margin-bottom:12px;{{ $ativo ? 'background:var(--teal-soft);border-radius:8px;padding:8px;margin:-4px -4px 8px;' : '' }}">
                         <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
-                            <a href="{{ route('matriculas.index', ['periodo' => $linha->id_periodo_letivo]) }}">
+                            <a href="{{ route('dashboard', ['periodo' => $linha->id_periodo_letivo]) }}">
                                 <strong>{{ $linha->descricao }}</strong>
                                 <span class="muted" style="font-weight:400;">· {{ \Illuminate\Support\Str::of($linha->org_descricao)->title() }}</span>
                             </a>
@@ -58,7 +85,10 @@
         </div>
 
         <div class="card">
-            <div class="card-h"><h2>Matrículas por Status</h2></div>
+            <div class="card-h">
+                <h2>Matrículas por Status</h2>
+                <span class="muted" style="font-size:12.5px;">{{ $filtrar ? $periodoAtual->descricao : 'Todos os períodos' }}</span>
+            </div>
             <div class="card-b">
                 @forelse ($porStatus as $s)
                     <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);">

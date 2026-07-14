@@ -1,19 +1,26 @@
 {{--
-    Sintético (pivot) reutilizável.
-    Params: $titulo, $rows, $statusColunas, $totais, $filtroParam, $labelCol,
-            $mostrarExtra (bool), $extraCol, $statusCor, $corHex
+    Sintético (pivot) por dimensões (Unidade → Curso [→ Turma]).
+    Params: $titulo, $visao, $dimensoes, $rows, $totais, $statusColunas, $statusCor, $corHex
 --}}
+@php $nDim = count($dimensoes); @endphp
 <div class="card" style="margin-top:22px;">
     <div class="card-h">
         <h2>{{ $titulo }}</h2>
-        <span class="muted" style="font-size:12.5px;">{{ count($rows) }} {{ \Illuminate\Support\Str::plural(strtolower($labelCol), count($rows)) }}{{ count($rows) >= 300 ? ' (top 300)' : '' }} · respeita os filtros</span>
+        <div style="display:flex;align-items:center;gap:12px;">
+            <span class="muted" style="font-size:12.5px;">{{ count($rows) }} linha(s) · respeita os filtros</span>
+            <div class="page-actions">
+                <a class="btn ghost" href="{{ route('matriculas.exportar', array_merge(['visao' => $visao, 'formato' => 'excel'], request()->query())) }}">⬇ Excel</a>
+                <a class="btn ghost" href="{{ route('matriculas.exportar', array_merge(['visao' => $visao, 'formato' => 'pdf'], request()->query())) }}" target="_blank">⬇ PDF</a>
+            </div>
+        </div>
     </div>
     <div class="table-wrap">
         <table>
             <thead>
                 <tr>
-                    <th>{{ $labelCol }}</th>
-                    @if ($mostrarExtra)<th>{{ $extraCol }}</th>@endif
+                    @foreach ($dimensoes as $d)
+                        <th>{{ $d['label'] }}</th>
+                    @endforeach
                     @foreach ($statusColunas as $st)
                         <th style="text-align:right;color:{{ $corHex[$statusCor($st)] }};">{{ $st }}</th>
                     @endforeach
@@ -23,28 +30,30 @@
             <tbody>
                 @forelse ($rows as $linha)
                     <tr>
-                        <td>
-                            @if ($linha['id'])
-                                <a href="{{ request()->fullUrlWithQuery([$filtroParam => $linha['id'], 'status' => null, 'page' => null]) }}">{{ $linha['label'] }}</a>
-                            @else
-                                {{ $linha['label'] }}
-                            @endif
-                        </td>
-                        @if ($mostrarExtra)<td class="muted">{{ $linha['extra'] }}</td>@endif
+                        @foreach ($dimensoes as $d)
+                            @php $val = $linha['dims'][$d['alias']]; $id = $linha['ids'][$d['alias']] ?? null; @endphp
+                            <td>
+                                @if (! empty($d['filtro']) && $id)
+                                    <a href="{{ request()->fullUrlWithQuery([$d['filtro'] => $id, 'status' => null, 'page' => null]) }}">{{ $val }}</a>
+                                @else
+                                    {{ $val }}
+                                @endif
+                            </td>
+                        @endforeach
                         @foreach ($statusColunas as $st)
                             <td style="text-align:right;">{{ ($linha['status'][$st] ?? 0) ? number_format($linha['status'][$st], 0, ',', '.') : '·' }}</td>
                         @endforeach
                         <td style="text-align:right;"><strong>{{ number_format($linha['total'], 0, ',', '.') }}</strong></td>
                     </tr>
                 @empty
-                    <tr><td colspan="{{ count($statusColunas) + ($mostrarExtra ? 3 : 2) }}"><div class="empty"><div class="big">▤</div>Sem dados para o filtro atual.</div></td></tr>
+                    <tr><td colspan="{{ $nDim + count($statusColunas) + 1 }}"><div class="empty"><div class="big">▤</div>Sem dados para o filtro atual.</div></td></tr>
                 @endforelse
             </tbody>
             @if (count($rows))
                 <tfoot>
                     <tr style="background:#fafbfc;font-weight:700;">
                         <td>TOTAL</td>
-                        @if ($mostrarExtra)<td></td>@endif
+                        @for ($i = 1; $i < $nDim; $i++)<td></td>@endfor
                         @foreach ($statusColunas as $st)
                             <td style="text-align:right;">{{ number_format($totais[$st] ?? 0, 0, ',', '.') }}</td>
                         @endforeach

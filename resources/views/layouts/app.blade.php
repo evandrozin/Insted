@@ -182,6 +182,9 @@
                 @can(\App\Support\Permissions::REMATRICULA_VER)
                     <a href="{{ route('rematricula.index') }}" class="{{ request()->routeIs('rematricula.*') ? 'active' : '' }}"><span class="ico">⇄</span> Rematrícula</a>
                 @endcan
+                @can(\App\Support\Permissions::MATRICULAS_VER)
+                    <a href="{{ route('cursos.index') }}" class="{{ request()->routeIs('cursos.*') ? 'active' : '' }}"><span class="ico">▦</span> Cursos</a>
+                @endcan
                 <a href="{{ route('periodos.index') }}" class="{{ request()->routeIs('periodos.*') ? 'active' : '' }}"><span class="ico">◷</span> Períodos Letivos</a>
             @endcanany
 

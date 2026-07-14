@@ -7,8 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 class CursoBase extends Model
 {
     protected $table = 'cursos_base';
+
     protected $primaryKey = 'id_curso_base';
+
     public $incrementing = false;
+
     protected $keyType = 'int';
 
     protected $guarded = [];
@@ -17,4 +20,9 @@ class CursoBase extends Model
         'raw' => 'array',
         'sincronizado_em' => 'datetime',
     ];
+
+    public function matriculas()
+    {
+        return $this->hasMany(Matricula::class, 'id_curso_base', 'id_curso_base');
+    }
 }

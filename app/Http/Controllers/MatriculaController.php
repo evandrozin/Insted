@@ -31,27 +31,28 @@ class MatriculaController extends Controller
         if ($request->filled('status')) {
             $lista->where('matriculas.status', $request->status);
         }
-        $matriculas = $lista->orderByDesc('matriculas.id_matricula')
+        $matriculas = $lista
+            ->orderBy('matriculas.unidade_fisica')
+            ->orderBy('matriculas.curso')
+            ->orderBy('matriculas.turma')
+            ->orderBy('matriculas.aluno')
             ->paginate(25)->withQueryString();
 
         // Colunas de status (ordenadas por volume) — comuns aos sintéticos.
         $statusColunas = $porStatus->keys()->filter()->values()->all();
 
-        // Sintético por curso × status (respeita o contexto).
-        [$sinteticoCurso, $sinteticoCursoTotais] = $this->montarSintetico(
-            clone $base, $statusColunas, 'matriculas.id_curso_base', 'matriculas.curso'
-        );
+        // Sintético por Unidade → Curso (respeita o contexto).
+        $dimCurso = $this->dimensoesSintetico('curso');
+        [$sinteticoCurso, $sinteticoCursoTotais] = $this->montarSintetico(clone $base, $statusColunas, $dimCurso);
 
-        // Sintético por turma × status (respeita o contexto).
-        [$sintetico, $sinteticoTotais] = $this->montarSintetico(
-            clone $base, $statusColunas, 'matriculas.id_turma', 'matriculas.turma', 'matriculas.curso'
-        );
+        // Sintético por Unidade → Curso → Turma (respeita o contexto).
+        $dimTurma = $this->dimensoesSintetico('turma');
+        [$sintetico, $sinteticoTotais] = $this->montarSintetico(clone $base, $statusColunas, $dimTurma);
 
         // Opções dos filtros.
-        $anos = PeriodoLetivo::whereNotNull('ano')->distinct()->orderByDesc('ano')->pluck('ano');
         $periodos = PeriodoLetivo::orderByDesc('ano')->orderByDesc('semestre')
             ->get(['id_periodo_letivo', 'descricao', 'org_descricao', 'ano']);
-        $cursos = CursoBase::orderBy('nome_impressao')->get(['id_curso_base', 'nome_impressao']);
+        $cursos = CursoBase::orderBy('nome_impressao')->get(['id_curso_base', 'nome_impressao', 'modalidade']);
         // Turmas relevantes ao contexto atual (só as que têm matrícula no filtro).
         $turmas = (clone $base)
             ->whereNotNull('matriculas.id_turma')
@@ -60,10 +61,10 @@ class MatriculaController extends Controller
             ->get();
 
         return view('matriculas.index', compact(
-            'matriculas', 'anos', 'periodos', 'cursos', 'turmas',
+            'matriculas', 'periodos', 'cursos', 'turmas',
             'porStatus', 'totalContexto', 'statusColunas',
-            'sinteticoCurso', 'sinteticoCursoTotais',
-            'sintetico', 'sinteticoTotais'
+            'sinteticoCurso', 'sinteticoCursoTotais', 'dimCurso',
+            'sintetico', 'sinteticoTotais', 'dimTurma'
         ));
     }
 
@@ -92,9 +93,6 @@ class MatriculaController extends Controller
         if ($request->filled('periodo')) {
             $query->where('matriculas.id_periodo_letivo', $request->periodo);
         }
-        if ($request->filled('ano')) {
-            $query->where('periodos_letivos.ano', $request->ano);
-        }
         if ($request->filled('curso')) {
             $query->where('matriculas.id_curso_base', $request->curso);
         }
@@ -104,26 +102,39 @@ class MatriculaController extends Controller
     }
 
     /**
-     * Monta um sintético (pivot) de matrículas agrupado por uma dimensão,
-     * com os status em colunas + total.
+     * Dimensões (colunas identificadoras) de cada sintético, na ordem exigida.
+     * 'filtro' habilita o drill-down (link) para o filtro de matrículas.
+     */
+    protected function dimensoesSintetico(string $visao): array
+    {
+        $unidade = ['label' => 'Unidade', 'col' => 'matriculas.unidade_fisica', 'alias' => 'unidade'];
+        $curso = ['label' => 'Curso', 'col' => 'matriculas.curso', 'alias' => 'curso', 'id_col' => 'matriculas.id_curso_base', 'filtro' => 'curso'];
+        $turma = ['label' => 'Turma', 'col' => 'matriculas.turma', 'alias' => 'turma', 'id_col' => 'matriculas.id_turma', 'filtro' => 'turma'];
+
+        return $visao === 'turma'
+            ? [$unidade, ['label' => 'Curso', 'col' => 'matriculas.curso', 'alias' => 'curso'], $turma]
+            : [$unidade, $curso];
+    }
+
+    /**
+     * Monta um sintético (pivot) agrupado por uma lista ordenada de dimensões
+     * (ex.: Unidade → Curso → Turma), com os status em colunas + total.
+     * As linhas saem ordenadas pelas dimensões, na ordem informada.
      *
-     * @param  string  $colId  coluna de id do agrupamento (ex.: matriculas.id_turma)
-     * @param  string  $colLabel  coluna de rótulo (ex.: matriculas.turma)
-     * @param  string|null  $colExtra  coluna adicional a exibir (ex.: matriculas.curso)
      * @return array{0: array, 1: array} [linhas, totais]
      */
-    protected function montarSintetico(Builder $base, array $statusColunas, string $colId, string $colLabel, ?string $colExtra = null): array
+    protected function montarSintetico(Builder $base, array $statusColunas, array $dimensoes): array
     {
-        $selects = [$colId, $colLabel, 'matriculas.status', DB::raw('count(*) as total')];
-        $groups = [$colId, $colLabel, 'matriculas.status'];
-        if ($colExtra) {
-            array_splice($selects, 2, 0, [$colExtra]);
-            $groups[] = $colExtra;
+        $selects = ['matriculas.status', DB::raw('count(*) as total')];
+        $groups = ['matriculas.status'];
+        foreach ($dimensoes as $d) {
+            $selects[] = $d['col'].' as '.$d['alias'];
+            $groups[] = $d['col'];
+            if (! empty($d['id_col'])) {
+                $selects[] = $d['id_col'].' as '.$d['alias'].'_id';
+                $groups[] = $d['id_col'];
+            }
         }
-
-        $idAlias = last(explode('.', $colId));
-        $labelAlias = last(explode('.', $colLabel));
-        $extraAlias = $colExtra ? last(explode('.', $colExtra)) : null;
 
         $linhas = $base->select($selects)->groupBy($groups)->get();
 
@@ -134,12 +145,21 @@ class MatriculaController extends Controller
         }
 
         foreach ($linhas as $l) {
-            $chave = $l->{$idAlias} ?? 'sem';
+            $chaveParts = $dims = $ids = [];
+            foreach ($dimensoes as $d) {
+                $val = $l->{$d['alias']};
+                $chaveParts[] = (string) $val;
+                $dims[$d['alias']] = $val ?: '(não informado)';
+                if (! empty($d['id_col'])) {
+                    $ids[$d['alias']] = $l->{$d['alias'].'_id'};
+                }
+            }
+            $chave = implode('|', $chaveParts);
+
             if (! isset($sintetico[$chave])) {
                 $sintetico[$chave] = [
-                    'id' => $l->{$idAlias},
-                    'label' => $l->{$labelAlias} ?: '(não informado)',
-                    'extra' => $extraAlias ? $l->{$extraAlias} : null,
+                    'dims' => $dims,
+                    'ids' => $ids,
                     'status' => array_fill_keys($statusColunas, 0),
                     'total' => 0,
                 ];
@@ -152,10 +172,30 @@ class MatriculaController extends Controller
             }
         }
 
-        usort($sintetico, fn ($a, $b) => $b['total'] <=> $a['total']);
-        $sintetico = array_slice($sintetico, 0, 300);
+        // Ordena pelas dimensões, na ordem (Unidade, Curso[, Turma]).
+        $aliases = array_column($dimensoes, 'alias');
+        usort($sintetico, function ($a, $b) use ($aliases) {
+            foreach ($aliases as $al) {
+                $cmp = strcasecmp((string) $a['dims'][$al], (string) $b['dims'][$al]);
+                if ($cmp !== 0) {
+                    return $cmp;
+                }
+            }
+
+            return 0;
+        });
 
         return [$sintetico, $totais];
+    }
+
+    /** Colunas de status (ordenadas por volume) de uma base. */
+    protected function statusColunas(Builder $base): array
+    {
+        return (clone $base)
+            ->select('matriculas.status', DB::raw('count(*) as total'))
+            ->groupBy('matriculas.status')->orderByDesc('total')
+            ->pluck('total', 'matriculas.status')
+            ->keys()->filter()->values()->all();
     }
 
     public function show(Matricula $matricula)
@@ -163,57 +203,78 @@ class MatriculaController extends Controller
         return view('matriculas.show', compact('matricula'));
     }
 
-    /** Exporta a lista detalhada (respeitando os filtros) em CSV/Excel. */
-    public function exportarExcel(Request $request)
+    /**
+     * Exporta uma das três visões (lista | curso | turma) em excel|pdf,
+     * respeitando os filtros atuais.
+     */
+    public function exportar(Request $request, string $visao, string $formato)
     {
-        $lista = $this->baseFiltrada($request)
-            ->select('matriculas.*', 'periodos_letivos.ano as pl_ano');
+        return match ($visao) {
+            'lista' => $this->exportarLista($request, $formato),
+            'curso', 'turma' => $this->exportarSintetico($request, $visao, $formato),
+            default => abort(404),
+        };
+    }
+
+    /** Lista detalhada (Unidade, Curso, Turma, RA, Aluno, ...). */
+    protected function exportarLista(Request $request, string $formato)
+    {
+        $lista = $this->baseFiltrada($request)->select('matriculas.*');
         if ($request->filled('status')) {
             $lista->where('matriculas.status', $request->status);
         }
+        $lista->orderBy('matriculas.unidade_fisica')
+            ->orderBy('matriculas.curso')
+            ->orderBy('matriculas.turma')
+            ->orderBy('matriculas.aluno');
 
-        $colunas = ['RA', 'Aluno', 'E-mail', 'Curso', 'Turma', 'Período/Ano', 'Status'];
+        $colunas = ['Unidade', 'Curso', 'Turma', 'RA', 'Aluno', 'E-mail', 'Período', 'Status'];
+
+        if ($formato === 'pdf') {
+            return view('matriculas.export_lista_pdf', [
+                'colunas' => $colunas,
+                'rows' => $lista->limit(5000)->get(),
+            ]);
+        }
 
         $linhas = function () use ($lista) {
-            foreach ($lista->orderBy('matriculas.aluno')->cursor() as $m) {
-                yield [
-                    $m->ra,
-                    $m->aluno,
-                    $m->aluno_email,
-                    $m->curso,
-                    $m->turma,
-                    $m->pl_ano,
-                    $m->status,
-                ];
+            foreach ($lista->cursor() as $m) {
+                yield [$m->unidade_fisica, $m->curso, $m->turma, $m->ra, $m->aluno, $m->aluno_email, $m->periodo_letivo, $m->status];
             }
         };
 
         return Exportador::csv('matriculas', $colunas, $linhas());
     }
 
-    /** Gera o relatório sintético (por status/curso/turma) pronto para impressão em PDF. */
-    public function exportarPdf(Request $request)
+    /** Sintético por Unidade→Curso ou Unidade→Curso→Turma. */
+    protected function exportarSintetico(Request $request, string $visao, string $formato)
     {
         $base = $this->baseFiltrada($request);
+        $statusColunas = $this->statusColunas($base);
+        $dimensoes = $this->dimensoesSintetico($visao);
+        [$rows, $totais] = $this->montarSintetico(clone $base, $statusColunas, $dimensoes);
 
-        $porStatus = (clone $base)
-            ->select('matriculas.status', DB::raw('count(*) as total'))
-            ->groupBy('matriculas.status')->orderByDesc('total')
-            ->pluck('total', 'matriculas.status');
+        $titulo = $visao === 'turma' ? 'Sintético por Turma' : 'Sintético por Curso';
 
-        $totalContexto = (clone $base)->count();
-        $statusColunas = $porStatus->keys()->filter()->values()->all();
+        if ($formato === 'pdf') {
+            return view('matriculas.export_sintetico_pdf', compact('titulo', 'dimensoes', 'statusColunas', 'rows', 'totais'));
+        }
 
-        [$sinteticoCurso, $sinteticoCursoTotais] = $this->montarSintetico(
-            clone $base, $statusColunas, 'matriculas.id_curso_base', 'matriculas.curso'
-        );
-        [$sintetico, $sinteticoTotais] = $this->montarSintetico(
-            clone $base, $statusColunas, 'matriculas.id_turma', 'matriculas.turma', 'matriculas.curso'
-        );
+        $colunas = array_merge(array_column($dimensoes, 'label'), $statusColunas, ['Total']);
+        $linhas = function () use ($rows, $dimensoes, $statusColunas) {
+            foreach ($rows as $r) {
+                $col = [];
+                foreach ($dimensoes as $d) {
+                    $col[] = $r['dims'][$d['alias']] ?? '';
+                }
+                foreach ($statusColunas as $s) {
+                    $col[] = $r['status'][$s] ?? 0;
+                }
+                $col[] = $r['total'] ?? 0;
+                yield $col;
+            }
+        };
 
-        return view('matriculas.export_pdf', compact(
-            'porStatus', 'totalContexto', 'statusColunas',
-            'sinteticoCurso', 'sinteticoCursoTotais', 'sintetico', 'sinteticoTotais'
-        ));
+        return Exportador::csv('matriculas_'.$visao, $colunas, $linhas());
     }
 }
