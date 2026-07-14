@@ -15,10 +15,16 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::factory()->create([
-            'name' => 'Administrador Insted',
-            'email' => 'admin@insted.edu.br',
-        ]);
+        // Administrador padrão (acesso total). Troque a senha após o primeiro login.
+        User::updateOrCreate(
+            ['email' => 'admin@insted.edu.br'],
+            [
+                'name' => 'Administrador Insted',
+                'password' => 'Insted@2026',
+                'is_admin' => true,
+                'permissions' => [],
+            ]
+        );
 
         $this->call([
             ApiParametroSeeder::class,

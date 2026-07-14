@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CursoBase;
 use App\Models\Matricula;
 use App\Models\PeriodoLetivo;
+use App\Support\Exportador;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,10 +15,7 @@ class MatriculaController extends Controller
     public function index(Request $request)
     {
         // Filtros de contexto (tudo, menos o status) — aplicados aos cards, à lista e ao sintético.
-        $base = Matricula::query()
-            ->leftJoin('periodos_letivos', 'matriculas.id_periodo_letivo', '=', 'periodos_letivos.id_periodo_letivo');
-
-        $this->aplicarFiltrosContexto($base, $request);
+        $base = $this->baseFiltrada($request);
 
         // Totalizadores por status (respeita o contexto; ignora o filtro de status).
         $porStatus = (clone $base)
@@ -69,6 +67,17 @@ class MatriculaController extends Controller
         ));
     }
 
+    /** Monta a query base com os filtros de contexto aplicados. */
+    protected function baseFiltrada(Request $request): Builder
+    {
+        $base = Matricula::query()
+            ->leftJoin('periodos_letivos', 'matriculas.id_periodo_letivo', '=', 'periodos_letivos.id_periodo_letivo');
+
+        $this->aplicarFiltrosContexto($base, $request);
+
+        return $base;
+    }
+
     /** Aplica os filtros de contexto (busca, período, ano, curso, turma) — exceto status. */
     protected function aplicarFiltrosContexto(Builder $query, Request $request): void
     {
@@ -98,10 +107,10 @@ class MatriculaController extends Controller
      * Monta um sintético (pivot) de matrículas agrupado por uma dimensão,
      * com os status em colunas + total.
      *
-     * @param  string       $colId     coluna de id do agrupamento (ex.: matriculas.id_turma)
-     * @param  string       $colLabel  coluna de rótulo (ex.: matriculas.turma)
+     * @param  string  $colId  coluna de id do agrupamento (ex.: matriculas.id_turma)
+     * @param  string  $colLabel  coluna de rótulo (ex.: matriculas.turma)
      * @param  string|null  $colExtra  coluna adicional a exibir (ex.: matriculas.curso)
-     * @return array{0: array, 1: array}  [linhas, totais]
+     * @return array{0: array, 1: array} [linhas, totais]
      */
     protected function montarSintetico(Builder $base, array $statusColunas, string $colId, string $colLabel, ?string $colExtra = null): array
     {
@@ -152,5 +161,59 @@ class MatriculaController extends Controller
     public function show(Matricula $matricula)
     {
         return view('matriculas.show', compact('matricula'));
+    }
+
+    /** Exporta a lista detalhada (respeitando os filtros) em CSV/Excel. */
+    public function exportarExcel(Request $request)
+    {
+        $lista = $this->baseFiltrada($request)
+            ->select('matriculas.*', 'periodos_letivos.ano as pl_ano');
+        if ($request->filled('status')) {
+            $lista->where('matriculas.status', $request->status);
+        }
+
+        $colunas = ['RA', 'Aluno', 'E-mail', 'Curso', 'Turma', 'Período/Ano', 'Status'];
+
+        $linhas = function () use ($lista) {
+            foreach ($lista->orderBy('matriculas.aluno')->cursor() as $m) {
+                yield [
+                    $m->ra,
+                    $m->aluno,
+                    $m->aluno_email,
+                    $m->curso,
+                    $m->turma,
+                    $m->pl_ano,
+                    $m->status,
+                ];
+            }
+        };
+
+        return Exportador::csv('matriculas', $colunas, $linhas());
+    }
+
+    /** Gera o relatório sintético (por status/curso/turma) pronto para impressão em PDF. */
+    public function exportarPdf(Request $request)
+    {
+        $base = $this->baseFiltrada($request);
+
+        $porStatus = (clone $base)
+            ->select('matriculas.status', DB::raw('count(*) as total'))
+            ->groupBy('matriculas.status')->orderByDesc('total')
+            ->pluck('total', 'matriculas.status');
+
+        $totalContexto = (clone $base)->count();
+        $statusColunas = $porStatus->keys()->filter()->values()->all();
+
+        [$sinteticoCurso, $sinteticoCursoTotais] = $this->montarSintetico(
+            clone $base, $statusColunas, 'matriculas.id_curso_base', 'matriculas.curso'
+        );
+        [$sintetico, $sinteticoTotais] = $this->montarSintetico(
+            clone $base, $statusColunas, 'matriculas.id_turma', 'matriculas.turma', 'matriculas.curso'
+        );
+
+        return view('matriculas.export_pdf', compact(
+            'porStatus', 'totalContexto', 'statusColunas',
+            'sinteticoCurso', 'sinteticoCursoTotais', 'sintetico', 'sinteticoTotais'
+        ));
     }
 }

@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'is_admin', 'permissions'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -27,6 +27,18 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_admin' => 'boolean',
+            'permissions' => 'array',
         ];
+    }
+
+    /** Verifica se o usuário possui uma permissão (admin possui todas). */
+    public function temPermissao(string $chave): bool
+    {
+        if ($this->is_admin) {
+            return true;
+        }
+
+        return in_array($chave, $this->permissions ?? [], true);
     }
 }

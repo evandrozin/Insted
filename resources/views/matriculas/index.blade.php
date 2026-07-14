@@ -104,6 +104,10 @@
     <div class="card">
         <div class="card-h">
             <h2>{{ number_format($matriculas->total(), 0, ',', '.') }} matrícula(s)</h2>
+            <div class="page-actions">
+                <a class="btn ghost" href="{{ route('matriculas.exportar.excel', request()->query()) }}">⬇ Excel</a>
+                <a class="btn ghost" href="{{ route('matriculas.exportar.pdf', request()->query()) }}" target="_blank">⬇ PDF</a>
+            </div>
         </div>
         <div class="table-wrap">
             <table>

@@ -6,7 +6,7 @@
 @php
     $idCols = $mostrarExtra ? 2 : 1;              // colunas identificadoras
     $antCols = 5;                                  // Ativos, Formandos, Adimpl, Inadimpl, Vlr aberto
-    $proxCols = count($statusCols) + 1;            // status + % Remat
+    $proxCols = count($statusCols) + 2;            // status + Novos + % Remat
 @endphp
 <div class="card rmt-tabela" style="margin-top:22px;">
     <div class="card-h">
@@ -36,6 +36,7 @@
                     @foreach ($statusCols as $st)
                         <th class="num" style="color:{{ $corHex[$statusCor($st)] }};">{{ $st }}</th>
                     @endforeach
+                    <th class="num" style="color:#0ea5e9;" title="Ingressantes: alunos novos no próximo período (ATIVA/AGUARDANDO), fora da coorte de rematrícula.">Novos</th>
                     <th class="num">% Remat.</th>
                 </tr>
             </thead>

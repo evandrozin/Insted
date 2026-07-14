@@ -59,6 +59,16 @@
             </div>
         </div></div>
     @else
+        <div class="card" style="margin-bottom:16px;">
+            <div class="card-b" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                <span class="muted" style="font-size:13px;"><strong>Exportar</strong> este comparativo de rematrícula:</span>
+                <div class="page-actions">
+                    <a class="btn primary" href="{{ route('rematricula.exportar.excel', ['anterior' => $idAnterior, 'proximo' => $idProximo]) }}">⬇ Excel (CSV)</a>
+                    <a class="btn dark" href="{{ route('rematricula.exportar.pdf', ['anterior' => $idAnterior, 'proximo' => $idProximo]) }}" target="_blank">⬇ PDF</a>
+                </div>
+            </div>
+        </div>
+
         {{-- Funil / resumo --}}
         <div class="status-cards" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));display:grid;gap:12px;margin-bottom:18px;">
             @php
@@ -104,7 +114,7 @@
         ])
 
         <div class="alert" style="background:#fdf6e3;border:1px solid #f0e2b8;color:#8a6d1a;margin-top:18px;">
-            <strong>Inadimplência:</strong> considera-se <strong>inadimplente</strong> o aluno com título <em>em aberto e vencido do próprio período anterior</em> ({{ $pAnterior->descricao ?? '' }}). Dívidas de outros períodos não contam aqui. O valor em aberto é a soma desses títulos vencidos do período anterior.
+            <strong>Inadimplência:</strong> considera-se <strong>inadimplente</strong> o aluno com título <em>em aberto e vencido do período anterior ({{ $pAnterior->descricao ?? '' }}) ou de períodos anteriores a ele</em>. Dívidas de períodos posteriores não contam aqui. O valor em aberto é a soma desses títulos vencidos acumulados até o período anterior.
         </div>
     @endif
 @endsection

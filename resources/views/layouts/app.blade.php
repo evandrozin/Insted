@@ -168,14 +168,31 @@
             <div class="group">Visão Geral</div>
             <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'active' : '' }}"><span class="ico">◧</span> Dashboard</a>
 
-            <div class="group">Acadêmico</div>
-            <a href="{{ route('matriculas.index') }}" class="{{ request()->routeIs('matriculas.*') ? 'active' : '' }}"><span class="ico">▤</span> Matrículas</a>
-            <a href="{{ route('rematricula.index') }}" class="{{ request()->routeIs('rematricula.*') ? 'active' : '' }}"><span class="ico">⇄</span> Rematrícula</a>
-            <a href="{{ route('periodos.index') }}" class="{{ request()->routeIs('periodos.*') ? 'active' : '' }}"><span class="ico">◷</span> Períodos Letivos</a>
+            @canany([\App\Support\Permissions::MATRICULAS_VER, \App\Support\Permissions::REMATRICULA_VER])
+                <div class="group">Acadêmico</div>
+                @can(\App\Support\Permissions::MATRICULAS_VER)
+                    <a href="{{ route('matriculas.index') }}" class="{{ request()->routeIs('matriculas.*') ? 'active' : '' }}"><span class="ico">▤</span> Matrículas</a>
+                @endcan
+                @can(\App\Support\Permissions::REMATRICULA_VER)
+                    <a href="{{ route('rematricula.index') }}" class="{{ request()->routeIs('rematricula.*') ? 'active' : '' }}"><span class="ico">⇄</span> Rematrícula</a>
+                @endcan
+                <a href="{{ route('periodos.index') }}" class="{{ request()->routeIs('periodos.*') ? 'active' : '' }}"><span class="ico">◷</span> Períodos Letivos</a>
+            @endcanany
 
-            <div class="group">Integração</div>
-            <a href="{{ route('ingestao.index') }}" class="{{ request()->routeIs('ingestao.*') ? 'active' : '' }}"><span class="ico">⟳</span> Sincronização</a>
-            <a href="{{ route('parametros.index') }}" class="{{ request()->routeIs('parametros.*') ? 'active' : '' }}"><span class="ico">⚙</span> Parâmetros de API</a>
+            @canany([\App\Support\Permissions::DADOS_SINCRONIZAR, \App\Support\Permissions::PARAMETROS_GERENCIAR])
+                <div class="group">Integração</div>
+                @can(\App\Support\Permissions::DADOS_SINCRONIZAR)
+                    <a href="{{ route('ingestao.index') }}" class="{{ request()->routeIs('ingestao.*') ? 'active' : '' }}"><span class="ico">⟳</span> Sincronização</a>
+                @endcan
+                @can(\App\Support\Permissions::PARAMETROS_GERENCIAR)
+                    <a href="{{ route('parametros.index') }}" class="{{ request()->routeIs('parametros.*') ? 'active' : '' }}"><span class="ico">⚙</span> Parâmetros de API</a>
+                @endcan
+            @endcanany
+
+            @can(\App\Support\Permissions::USUARIOS_GERENCIAR)
+                <div class="group">Administração</div>
+                <a href="{{ route('usuarios.index') }}" class="{{ request()->routeIs('usuarios.*') ? 'active' : '' }}"><span class="ico">◐</span> Usuários</a>
+            @endcan
         </nav>
         <div class="foot">Insted · Integração JACAD<br>v1.0</div>
     </aside>
@@ -183,10 +200,16 @@
     <div class="main">
         <header class="topbar">
             <h1>@yield('titulo', 'Painel')</h1>
-            <div class="user">
-                <span>{{ config('app.name') }}</span>
-                <div class="avatar">IN</div>
-            </div>
+            @auth
+                <div class="user">
+                    <span>{{ auth()->user()->name }}{{ auth()->user()->is_admin ? ' · Admin' : '' }}</span>
+                    <div class="avatar">{{ \Illuminate\Support\Str::of(auth()->user()->name)->explode(' ')->map(fn ($p) => mb_substr($p, 0, 1))->take(2)->implode('') }}</div>
+                    <form method="POST" action="{{ route('logout') }}" style="margin:0;">
+                        @csrf
+                        <button type="submit" class="btn ghost" style="padding:6px 12px;">Sair</button>
+                    </form>
+                </div>
+            @endauth
         </header>
         <main class="content">
             @if (session('sucesso'))
