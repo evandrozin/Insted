@@ -1,17 +1,23 @@
 {{--
     Tabela de coorte de rematrícula, com cabeçalho agrupador (anterior x próximo).
-    Params: $titulo, $rows, $totais, $labelCol, $mostrarExtra, $statusCols,
-            $statusCor, $corHex, $labelAnterior, $labelProximo
+    Params: $titulo, $visao, $dimensoes, $rows, $totais, $statusCols,
+            $statusCor, $corHex, $labelAnterior, $labelProximo, $idAnterior, $idProximo
 --}}
 @php
-    $idCols = $mostrarExtra ? 2 : 1;              // colunas identificadoras
+    $idCols = count($dimensoes);                   // Unidade, Curso [, Turma]
     $antCols = 5;                                  // Ativos, Formandos, Adimpl, Inadimpl, Vlr aberto
     $proxCols = count($statusCols) + 2;            // status + Novos + % Remat
 @endphp
 <div class="card rmt-tabela" style="margin-top:22px;">
     <div class="card-h">
         <h2>{{ $titulo }}</h2>
-        <span class="muted" style="font-size:12.5px;">{{ count($rows) }} linha(s) · formandos fora da base de rematrícula</span>
+        <div style="display:flex;align-items:center;gap:12px;">
+            <span class="muted" style="font-size:12.5px;">{{ count($rows) }} linha(s) · formandos fora da base</span>
+            <div class="page-actions">
+                <a class="btn ghost" href="{{ route('rematricula.exportar', ['visao' => $visao, 'formato' => 'excel', 'anterior' => $idAnterior, 'proximo' => $idProximo]) }}">⬇ Excel</a>
+                <a class="btn ghost" href="{{ route('rematricula.exportar', ['visao' => $visao, 'formato' => 'pdf', 'anterior' => $idAnterior, 'proximo' => $idProximo]) }}" target="_blank">⬇ PDF</a>
+            </div>
+        </div>
     </div>
     <div class="table-wrap">
         <table>
@@ -26,8 +32,9 @@
                     </th>
                 </tr>
                 <tr>
-                    <th>{{ $labelCol }}</th>
-                    @if ($mostrarExtra)<th>Curso</th>@endif
+                    @foreach ($dimensoes as $d)
+                        <th>{{ $d['label'] }}</th>
+                    @endforeach
                     <th class="num" style="border-left:2px solid #bfe3e1;">Ativos</th>
                     <th class="num" style="color:#7c5cff;">Poss. form.</th>
                     <th class="num" style="color:#17a34a;">Adimpl.</th>
@@ -49,8 +56,9 @@
                         $taxa = $base ? round($remat / $base * 100) : 0;
                     @endphp
                     <tr>
-                        <td>{{ $mostrarExtra ? $linha['turma'] : $linha['curso'] }}</td>
-                        @if ($mostrarExtra)<td class="muted">{{ $linha['curso'] }}</td>@endif
+                        @foreach ($dimensoes as $i => $d)
+                            <td @class(['muted' => $i > 0])>{{ $linha[$d['alias']] ?? '' }}</td>
+                        @endforeach
                         <td class="num" style="border-left:2px solid #eef0f3;"><strong>{{ number_format($linha['total'], 0, ',', '.') }}</strong></td>
                         <td class="num" style="color:#7c5cff;">{{ ($linha['formandos'] ?? 0) ? number_format($linha['formandos'], 0, ',', '.') : '·' }}</td>
                         <td class="num">{{ ($linha['adimpl'] ?? 0) ? number_format($linha['adimpl'], 0, ',', '.') : '·' }}</td>
@@ -76,7 +84,7 @@
                 <tfoot>
                     <tr style="background:#fafbfc;font-weight:700;">
                         <td>TOTAL</td>
-                        @if ($mostrarExtra)<td></td>@endif
+                        @for ($i = 1; $i < $idCols; $i++)<td></td>@endfor
                         <td class="num" style="border-left:2px solid #eef0f3;">{{ number_format($totais['total'] ?? 0, 0, ',', '.') }}</td>
                         <td class="num" style="color:#7c5cff;">{{ number_format($totais['formandos'] ?? 0, 0, ',', '.') }}</td>
                         <td class="num">{{ number_format($totais['adimpl'] ?? 0, 0, ',', '.') }}</td>

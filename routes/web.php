@@ -36,8 +36,10 @@ Route::middleware('auth')->group(function () {
     // Acadêmico — Rematrícula
     Route::middleware('can:'.Permissions::REMATRICULA_VER)->group(function () {
         Route::get('/rematricula', [RematriculaController::class, 'index'])->name('rematricula.index');
-        Route::get('/rematricula/exportar/excel', [RematriculaController::class, 'exportarExcel'])->name('rematricula.exportar.excel');
-        Route::get('/rematricula/exportar/pdf', [RematriculaController::class, 'exportarPdf'])->name('rematricula.exportar.pdf');
+        Route::get('/rematricula/exportar/{visao}/{formato}', [RematriculaController::class, 'exportar'])
+            ->whereIn('visao', ['curso', 'turma'])
+            ->whereIn('formato', ['excel', 'pdf'])
+            ->name('rematricula.exportar');
     });
 
     Route::get('/periodos-letivos', [PeriodoLetivoController::class, 'index'])->name('periodos.index');

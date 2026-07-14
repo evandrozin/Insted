@@ -56,7 +56,7 @@ class RematriculaController extends Controller
         $coorte = DB::table('matriculas')
             ->where('id_periodo_letivo', $idAnterior)
             ->where('status', 'ATIVA')
-            ->get(['id_aluno', 'id_curso_base', 'curso', 'id_turma', 'turma', 'id_curso_matriz']);
+            ->get(['id_aluno', 'unidade_fisica', 'id_curso_base', 'curso', 'id_turma', 'turma', 'id_curso_matriz']);
 
         // Possíveis formandos: aluno no último semestre da matriz.
         // período atual (da turma) >= total de semestres (da matriz).
@@ -68,7 +68,7 @@ class RematriculaController extends Controller
         // Matrículas do próximo período (com curso/turma p/ os novos alunos).
         $proxRows = DB::table('matriculas')
             ->where('id_periodo_letivo', $idProximo)
-            ->get(['id_aluno', 'status', 'id_curso_base', 'curso', 'id_turma', 'turma']);
+            ->get(['id_aluno', 'status', 'unidade_fisica', 'id_curso_base', 'curso', 'id_turma', 'turma']);
 
         // Status de cada aluno no próximo período (um por aluno, por prioridade).
         $proxPorAluno = [];
@@ -138,14 +138,16 @@ class RematriculaController extends Controller
             $semTotal = $matrizTotal[$m->id_curso_matriz] ?? null;
             $formando = $semAtual !== null && $semTotal !== null && $semAtual >= $semTotal;
 
+            $unidade = $m->unidade_fisica ?: '(sem unidade)';
+
             $addPivot($porCurso, $totCurso,
-                (string) ($m->id_curso_base ?? 'x').'|'.$m->curso,
-                ['id_curso_base' => $m->id_curso_base, 'curso' => $m->curso ?: '(sem curso)'],
+                $unidade.'|'.($m->id_curso_base ?? 'x').'|'.$m->curso,
+                ['unidade' => $unidade, 'id_curso_base' => $m->id_curso_base, 'curso' => $m->curso ?: '(sem curso)'],
                 $statusProx, $inad, $valorInad, $formando);
 
             $addPivot($porTurma, $totTurma,
-                (string) ($m->id_turma ?? 'x'),
-                ['id_turma' => $m->id_turma, 'turma' => $m->turma ?: '(sem turma)', 'curso' => $m->curso],
+                $unidade.'|'.($m->id_turma ?? 'x'),
+                ['unidade' => $unidade, 'id_turma' => $m->id_turma, 'turma' => $m->turma ?: '(sem turma)', 'curso' => $m->curso],
                 $statusProx, $inad, $valorInad, $formando);
         }
 
@@ -168,21 +170,26 @@ class RematriculaController extends Controller
                 continue; // estava ATIVO no anterior (coorte) — é rematrícula, não novo
             }
 
+            $unidade = $r->unidade_fisica ?: '(sem unidade)';
+
             $addNovo($porCurso, $totCurso,
-                (string) ($r->id_curso_base ?? 'x').'|'.$r->curso,
-                ['id_curso_base' => $r->id_curso_base, 'curso' => $r->curso ?: '(sem curso)']);
+                $unidade.'|'.($r->id_curso_base ?? 'x').'|'.$r->curso,
+                ['unidade' => $unidade, 'id_curso_base' => $r->id_curso_base, 'curso' => $r->curso ?: '(sem curso)']);
 
             $addNovo($porTurma, $totTurma,
-                (string) ($r->id_turma ?? 'x'),
-                ['id_turma' => $r->id_turma, 'turma' => $r->turma ?: '(sem turma)', 'curso' => $r->curso]);
+                $unidade.'|'.($r->id_turma ?? 'x'),
+                ['unidade' => $unidade, 'id_turma' => $r->id_turma, 'turma' => $r->turma ?: '(sem turma)', 'curso' => $r->curso]);
         }
 
         // Ordena colunas de status: prioridade conhecida, depois demais, NÃO REMATRICULOU por último.
         $statusCols = $this->ordenarColunas(array_keys($statusSet), $NAO);
 
-        // Ordena linhas por total desc.
-        usort($porCurso, fn ($a, $b) => $b['total'] <=> $a['total']);
-        usort($porTurma, fn ($a, $b) => $b['total'] <=> $a['total']);
+        // Ordena as linhas por Unidade → Curso [→ Turma].
+        usort($porCurso, fn ($a, $b) => strcasecmp($a['unidade'], $b['unidade'])
+            ?: strcasecmp($a['curso'] ?? '', $b['curso'] ?? ''));
+        usort($porTurma, fn ($a, $b) => strcasecmp($a['unidade'], $b['unidade'])
+            ?: strcasecmp($a['curso'] ?? '', $b['curso'] ?? '')
+            ?: strcasecmp($a['turma'] ?? '', $b['turma'] ?? ''));
 
         // Resumo geral (funil). A base de rematrícula exclui os possíveis formandos.
         $ativosAnt = count($coorte);
@@ -256,53 +263,19 @@ class RematriculaController extends Controller
         return ($idAnterior && $idProximo) ? [$idAnterior, $idProximo] : null;
     }
 
-    /** Exporta os pivôs de rematrícula (por curso e por turma) em CSV/Excel. */
-    public function exportarExcel(Request $request)
+    /** Colunas identificadoras (dimensões) de cada visão. */
+    protected function dimensoesRematricula(string $visao): array
     {
-        $par = $this->periodosSelecionados($request);
-        if (! $par) {
-            return back()->with('erro', 'Selecione os dois períodos antes de exportar.');
-        }
-
-        $dados = $this->computar($par[0], $par[1]);
-        $statusCols = $dados['statusCols'];
-
-        $colunas = array_merge(
-            ['Nível', 'Curso', 'Turma'],
-            $statusCols,
-            ['Novos alunos', 'Poss. formandos', 'Base rematrícula', 'Adimplentes', 'Inadimplentes', 'Valor inadimplente', 'Total']
-        );
-
-        $linha = function (string $nivel, array $r) use ($statusCols) {
-            $cols = [$nivel, $r['curso'] ?? '', $r['turma'] ?? ''];
-            foreach ($statusCols as $s) {
-                $cols[] = $r['status'][$s] ?? 0;
-            }
-            $cols[] = $r['novos'] ?? 0;
-            $cols[] = $r['formandos'] ?? 0;
-            $cols[] = $r['base_remat'] ?? 0;
-            $cols[] = $r['adimpl'] ?? 0;
-            $cols[] = $r['inadimpl'] ?? 0;
-            $cols[] = number_format((float) ($r['valor_inad'] ?? 0), 2, ',', '.');
-            $cols[] = $r['total'] ?? 0;
-
-            return $cols;
-        };
-
-        $linhas = function () use ($dados, $linha) {
-            foreach ($dados['porCurso'] as $r) {
-                yield $linha('Curso', $r);
-            }
-            foreach ($dados['porTurma'] as $r) {
-                yield $linha('Turma', $r);
-            }
-        };
-
-        return Exportador::csv('rematricula', $colunas, $linhas());
+        return $visao === 'turma'
+            ? [['label' => 'Unidade', 'alias' => 'unidade'], ['label' => 'Curso', 'alias' => 'curso'], ['label' => 'Turma', 'alias' => 'turma']]
+            : [['label' => 'Unidade', 'alias' => 'unidade'], ['label' => 'Curso', 'alias' => 'curso']];
     }
 
-    /** Gera o relatório de rematrícula pronto para impressão em PDF. */
-    public function exportarPdf(Request $request)
+    /**
+     * Exporta uma das duas visões (curso | turma) em excel|pdf, respeitando os
+     * períodos selecionados.
+     */
+    public function exportar(Request $request, string $visao, string $formato)
     {
         $par = $this->periodosSelecionados($request);
         if (! $par) {
@@ -314,8 +287,44 @@ class RematriculaController extends Controller
         $pProximo = $periodos->firstWhere('id_periodo_letivo', $par[1]);
 
         $dados = $this->computar($par[0], $par[1]);
+        $statusCols = $dados['statusCols'];
+        $dimensoes = $this->dimensoesRematricula($visao);
+        $rows = $visao === 'turma' ? $dados['porTurma'] : $dados['porCurso'];
+        $titulo = $visao === 'turma' ? 'Rematrícula por Turma' : 'Rematrícula por Curso';
 
-        return view('rematricula.export_pdf', array_merge($dados, compact('pAnterior', 'pProximo')));
+        if ($formato === 'pdf') {
+            return view('rematricula.export_pdf', compact(
+                'titulo', 'dimensoes', 'rows', 'statusCols', 'pAnterior', 'pProximo'
+            ) + ['resumo' => $dados['resumo']]);
+        }
+
+        $colunas = array_merge(
+            array_column($dimensoes, 'label'),
+            $statusCols,
+            ['Novos alunos', 'Poss. formandos', 'Base rematrícula', 'Adimplentes', 'Inadimplentes', 'Valor inadimplente', 'Total']
+        );
+
+        $linhas = function () use ($rows, $dimensoes, $statusCols) {
+            foreach ($rows as $r) {
+                $cols = [];
+                foreach ($dimensoes as $d) {
+                    $cols[] = $r[$d['alias']] ?? '';
+                }
+                foreach ($statusCols as $s) {
+                    $cols[] = $r['status'][$s] ?? 0;
+                }
+                $cols[] = $r['novos'] ?? 0;
+                $cols[] = $r['formandos'] ?? 0;
+                $cols[] = $r['base_remat'] ?? 0;
+                $cols[] = $r['adimpl'] ?? 0;
+                $cols[] = $r['inadimpl'] ?? 0;
+                $cols[] = number_format((float) ($r['valor_inad'] ?? 0), 2, ',', '.');
+                $cols[] = $r['total'] ?? 0;
+                yield $cols;
+            }
+        };
+
+        return Exportador::csv('rematricula_'.$visao, $colunas, $linhas());
     }
 
     protected function rank(?string $status): int

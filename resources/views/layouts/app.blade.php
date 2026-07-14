@@ -158,17 +158,7 @@
 <div class="layout">
     <aside class="sidebar">
         <div class="brand">
-            <svg viewBox="0 0 100 100" width="36" height="36" fill="none" xmlns="http://www.w3.org/2000/svg" style="color:var(--teal);flex:none;">
-                <g stroke="currentColor" stroke-width="6">
-                    <ellipse cx="50" cy="50" rx="42" ry="17"/>
-                    <ellipse cx="50" cy="50" rx="42" ry="17" transform="rotate(60 50 50)"/>
-                    <ellipse cx="50" cy="50" rx="42" ry="17" transform="rotate(120 50 50)"/>
-                </g>
-            </svg>
-            <div>
-                <span class="name">insted<span style="color:var(--teal);">.</span></span>
-                <span class="sub">CENTRO UNIVERSITÁRIO</span>
-            </div>
+            <img src="{{ asset('img/insted.svg') }}" alt="Insted" style="height:40px;max-width:100%;filter:brightness(0) invert(1);">
         </div>
         <nav class="nav">
             <div class="group">Visão Geral</div>

@@ -17,6 +17,16 @@
 <style>
     .rmt-tabela a { color: var(--teal-dark); }
     .rmt-tabela td.num, .rmt-tabela th.num { text-align: right; }
+    /* Muitas colunas: usa a largura toda da página, compacta as células e deixa
+       os textos longos (curso/turma) quebrarem — para caber tudo sem cortar. */
+    .content { max-width: none; }
+    .rmt-tabela .table-wrap { overflow-x: auto; }
+    .rmt-tabela table { width: 100%; table-layout: fixed; }
+    .rmt-tabela th, .rmt-tabela td { padding: 6px 8px; font-size: 11.5px; }
+    .rmt-tabela .num { white-space: nowrap; width: 1%; }
+    .rmt-tabela td:not(.num), .rmt-tabela th:not(.num) { overflow-wrap: anywhere; word-break: break-word; }
+    .rmt-tabela .table-wrap::-webkit-scrollbar { height: 10px; }
+    .rmt-tabela .table-wrap::-webkit-scrollbar-thumb { background: #c3c7cd; border-radius: 6px; }
 </style>
 @endpush
 
@@ -59,16 +69,6 @@
             </div>
         </div></div>
     @else
-        <div class="card" style="margin-bottom:16px;">
-            <div class="card-b" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-                <span class="muted" style="font-size:13px;"><strong>Exportar</strong> este comparativo de rematrícula:</span>
-                <div class="page-actions">
-                    <a class="btn primary" href="{{ route('rematricula.exportar.excel', ['anterior' => $idAnterior, 'proximo' => $idProximo]) }}">⬇ Excel (CSV)</a>
-                    <a class="btn dark" href="{{ route('rematricula.exportar.pdf', ['anterior' => $idAnterior, 'proximo' => $idProximo]) }}" target="_blank">⬇ PDF</a>
-                </div>
-            </div>
-        </div>
-
         {{-- Funil / resumo --}}
         <div class="status-cards" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));display:grid;gap:12px;margin-bottom:18px;">
             @php
@@ -99,19 +99,23 @@
         </div>
 
         @include('rematricula._tabela', [
-            'titulo' => 'Por Curso', 'rows' => $porCurso, 'totais' => $totCurso,
-            'labelCol' => 'Curso', 'mostrarExtra' => false, 'statusCols' => $statusCols,
+            'titulo' => 'Por Curso', 'visao' => 'curso',
+            'dimensoes' => [['label' => 'Unidade', 'alias' => 'unidade'], ['label' => 'Curso', 'alias' => 'curso']],
+            'rows' => $porCurso, 'totais' => $totCurso, 'statusCols' => $statusCols,
             'statusCor' => $statusCor, 'corHex' => $corHex,
             'labelAnterior' => $pAnterior->descricao ?? 'Anterior',
             'labelProximo' => $pProximo->descricao ?? 'Próximo',
+            'idAnterior' => $idAnterior, 'idProximo' => $idProximo,
         ])
 
         @include('rematricula._tabela', [
-            'titulo' => 'Por Turma', 'rows' => $porTurma, 'totais' => $totTurma,
-            'labelCol' => 'Turma', 'mostrarExtra' => true, 'statusCols' => $statusCols,
+            'titulo' => 'Por Turma', 'visao' => 'turma',
+            'dimensoes' => [['label' => 'Unidade', 'alias' => 'unidade'], ['label' => 'Curso', 'alias' => 'curso'], ['label' => 'Turma', 'alias' => 'turma']],
+            'rows' => $porTurma, 'totais' => $totTurma, 'statusCols' => $statusCols,
             'statusCor' => $statusCor, 'corHex' => $corHex,
             'labelAnterior' => $pAnterior->descricao ?? 'Anterior',
             'labelProximo' => $pProximo->descricao ?? 'Próximo',
+            'idAnterior' => $idAnterior, 'idProximo' => $idProximo,
         ])
 
         <div class="alert" style="background:#fdf6e3;border:1px solid #f0e2b8;color:#8a6d1a;margin-top:18px;">
