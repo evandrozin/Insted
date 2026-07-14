@@ -38,8 +38,16 @@
 <body>
     <div class="box">
         <div class="top">
-            <div class="logo">i</div>
-            <div class="name">inst<b>ed</b></div>
+            <div style="display:flex;justify-content:center;margin-bottom:8px;">
+                <svg viewBox="0 0 100 100" width="60" height="60" fill="none" xmlns="http://www.w3.org/2000/svg" style="color:var(--teal-dark);">
+                    <g stroke="currentColor" stroke-width="6">
+                        <ellipse cx="50" cy="50" rx="42" ry="17"/>
+                        <ellipse cx="50" cy="50" rx="42" ry="17" transform="rotate(60 50 50)"/>
+                        <ellipse cx="50" cy="50" rx="42" ry="17" transform="rotate(120 50 50)"/>
+                    </g>
+                </svg>
+            </div>
+            <div class="name" style="font-size:26px;">insted<span style="color:var(--teal);">.</span></div>
             <span class="sub">CENTRO UNIVERSITÁRIO</span>
         </div>
         <form method="POST" action="{{ route('login') }}">

@@ -37,8 +37,14 @@
     </div>
     <div class="rep-head">
         <div class="brand">
-            <div class="logo">i</div>
-            <div class="name">inst<b>ed</b></div>
+            <svg viewBox="0 0 100 100" width="34" height="34" fill="none" xmlns="http://www.w3.org/2000/svg" style="color:var(--teal-dark);flex:none;">
+                <g stroke="currentColor" stroke-width="6">
+                    <ellipse cx="50" cy="50" rx="42" ry="17"/>
+                    <ellipse cx="50" cy="50" rx="42" ry="17" transform="rotate(60 50 50)"/>
+                    <ellipse cx="50" cy="50" rx="42" ry="17" transform="rotate(120 50 50)"/>
+                </g>
+            </svg>
+            <div class="name">insted<span style="color:var(--teal);">.</span></div>
         </div>
         <div class="meta">
             @yield('subtitulo')<br>
