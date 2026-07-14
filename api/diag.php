@@ -23,16 +23,18 @@ echo "PHP version   : ".PHP_VERSION."\n";
 echo "pdo_pgsql     : ".(extension_loaded('pdo_pgsql') ? 'sim' : 'NÃO')."\n";
 echo "openssl       : ".(extension_loaded('openssl') ? 'sim' : 'NÃO')."\n";
 echo "\n--- Variáveis de ambiente ---\n";
-foreach (['APP_ENV', 'APP_DEBUG', 'APP_KEY', 'DB_CONNECTION', 'DB_URL', 'DB_HOST', 'LOG_CHANNEL', 'SESSION_DRIVER', 'CACHE_STORE', 'QUEUE_CONNECTION'] as $k) {
+$secretas = ['APP_KEY', 'DB_URL', 'DATABASE_URL', 'DATABASE_URL_UNPOOLED', 'POSTGRES_URL_NON_POOLING'];
+foreach (['APP_ENV', 'APP_DEBUG', 'APP_KEY', 'DB_CONNECTION', 'DB_URL', 'DATABASE_URL', 'DATABASE_URL_UNPOOLED', 'POSTGRES_URL_NON_POOLING', 'LOG_CHANNEL'] as $k) {
     $v = $env($k);
-    if (in_array($k, ['APP_KEY', 'DB_URL'], true)) {
+    if (in_array($k, $secretas, true)) {
         $v = $v ? '(definida, '.strlen($v).' caracteres)' : '(AUSENTE)';
     }
-    echo str_pad($k, 18).': '.($v ?? '(AUSENTE)')."\n";
+    echo str_pad($k, 26).': '.($v ?? '(AUSENTE)')."\n";
 }
 
 echo "\n--- Teste de conexão com o banco ---\n";
-$url = $env('DB_URL');
+// Mesmo fallback do config/database.php.
+$url = $env('DB_URL') ?: ($env('DATABASE_URL_UNPOOLED') ?: ($env('POSTGRES_URL_NON_POOLING') ?: $env('DATABASE_URL')));
 if (! $url) {
     echo "DB_URL ausente — o Laravel usaria o driver padrão (sqlite) e quebraria.\n";
     exit;
