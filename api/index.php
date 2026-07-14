@@ -30,6 +30,19 @@ foreach ($dirs as $dir) {
     }
 }
 
+// bootstrap/cache é somente-leitura na Vercel. Redireciona os caches gerados
+// em runtime (packages/services) para /tmp, evitando erro de escrita.
+$caches = [
+    'APP_PACKAGES_CACHE' => $storage.'/framework/packages.php',
+    'APP_SERVICES_CACHE' => $storage.'/framework/services.php',
+    'APP_EVENTS_CACHE' => $storage.'/framework/events.php',
+];
+foreach ($caches as $k => $v) {
+    putenv("$k=$v");
+    $_ENV[$k] = $v;
+    $_SERVER[$k] = $v;
+}
+
 // Autoloader do Composer...
 require __DIR__.'/../vendor/autoload.php';
 

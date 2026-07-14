@@ -66,3 +66,42 @@ try {
     echo "conexão       : ERRO\n";
     echo 'mensagem      : '.$e->getMessage()."\n";
 }
+
+echo "\n--- Requisição HTTP real /login (debug forçado) ---\n";
+// Força o debug SÓ neste teste para capturar a exceção verdadeira.
+putenv('APP_DEBUG=true');
+$_ENV['APP_DEBUG'] = 'true';
+$_SERVER['APP_DEBUG'] = 'true';
+
+try {
+    $storage = '/tmp/storage';
+    foreach (['/framework/views', '/framework/cache/data', '/framework/sessions', '/logs'] as $d) {
+        if (! is_dir($storage.$d)) {
+            @mkdir($storage.$d, 0755, true);
+        }
+    }
+    foreach (['APP_PACKAGES_CACHE' => $storage.'/framework/packages.php', 'APP_SERVICES_CACHE' => $storage.'/framework/services.php', 'APP_EVENTS_CACHE' => $storage.'/framework/events.php'] as $k => $v) {
+        putenv("$k=$v");
+        $_ENV[$k] = $v;
+        $_SERVER[$k] = $v;
+    }
+
+    require __DIR__.'/../vendor/autoload.php';
+    $app = require __DIR__.'/../bootstrap/app.php';
+    $app->useStoragePath($storage);
+
+    $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
+    $request = Illuminate\Http\Request::create('/login', 'GET');
+    $response = $kernel->handle($request);
+
+    echo 'status /login      : '.$response->getStatusCode()."\n";
+    if ($response->getStatusCode() >= 400) {
+        $txt = trim(preg_replace('/\s+/', ' ', strip_tags($response->getContent())));
+        echo "corpo (início)     :\n".substr($txt, 0, 1200)."\n";
+    } else {
+        echo "OK — login renderizou.\n";
+    }
+} catch (Throwable $e) {
+    echo 'EXCEÇÃO            : '.get_class($e).': '.$e->getMessage().' @ '.$e->getFile().':'.$e->getLine()."\n\n";
+    echo $e->getTraceAsString()."\n";
+}
