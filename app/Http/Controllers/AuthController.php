@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\LoginLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -36,12 +38,35 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
+        // Registra o acesso (para a área de logs de login).
+        $usuario = Auth::user();
+        LoginLog::create([
+            'user_id' => $usuario->id,
+            'name' => $usuario->name,
+            'email' => $usuario->email,
+            'ip' => $request->ip(),
+            'user_agent' => substr((string) $request->userAgent(), 0, 512),
+            'session_id' => $request->session()->getId(),
+            'logged_in_at' => now(),
+            'last_activity_at' => now(),
+        ]);
+
         return redirect()->intended(route('dashboard'));
     }
 
     /** Encerra a sessão. */
     public function logout(Request $request)
     {
+        // Carimba a saída no log de acesso desta sessão (antes de invalidá-la).
+        DB::table('login_logs')
+            ->where('session_id', $request->session()->getId())
+            ->whereNull('logged_out_at')
+            ->update([
+                'logged_out_at' => now(),
+                'last_activity_at' => now(),
+                'logout_type' => 'manual',
+            ]);
+
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

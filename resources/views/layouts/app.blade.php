@@ -188,10 +188,15 @@
                 @endcan
             @endcanany
 
-            @can(\App\Support\Permissions::USUARIOS_GERENCIAR)
+            @canany([\App\Support\Permissions::USUARIOS_GERENCIAR, \App\Support\Permissions::LOGS_ACESSO_VER])
                 <div class="group">Administração</div>
-                <a href="{{ route('usuarios.index') }}" class="{{ request()->routeIs('usuarios.*') ? 'active' : '' }}"><span class="ico">◐</span> Usuários</a>
-            @endcan
+                @can(\App\Support\Permissions::USUARIOS_GERENCIAR)
+                    <a href="{{ route('usuarios.index') }}" class="{{ request()->routeIs('usuarios.*') ? 'active' : '' }}"><span class="ico">◐</span> Usuários</a>
+                @endcan
+                @can(\App\Support\Permissions::LOGS_ACESSO_VER)
+                    <a href="{{ route('logs-acesso.index') }}" class="{{ request()->routeIs('logs-acesso.*') ? 'active' : '' }}"><span class="ico">◔</span> Logs de acesso</a>
+                @endcan
+            @endcanany
         </nav>
         <div class="foot">Insted · Integração JACAD<br>v1.0</div>
     </aside>

@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CursoBaseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\IngestaoController;
+use App\Http\Controllers\LoginLogController;
 use App\Http\Controllers\MatriculaController;
 use App\Http\Controllers\PeriodoLetivoController;
 use App\Http\Controllers\RematriculaController;
@@ -69,5 +70,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/usuarios/{usuario}/editar', [UsuarioController::class, 'edit'])->name('usuarios.edit');
         Route::put('/usuarios/{usuario}', [UsuarioController::class, 'update'])->name('usuarios.update');
         Route::delete('/usuarios/{usuario}', [UsuarioController::class, 'destroy'])->name('usuarios.destroy');
+    });
+
+    // Administração — Logs de acesso (login/logout)
+    Route::middleware('can:'.Permissions::LOGS_ACESSO_VER)->group(function () {
+        Route::get('/logs-acesso', [LoginLogController::class, 'index'])->name('logs-acesso.index');
     });
 });

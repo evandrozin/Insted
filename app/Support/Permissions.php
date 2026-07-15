@@ -20,6 +20,8 @@ final class Permissions
 
     public const USUARIOS_GERENCIAR = 'usuarios.gerenciar';
 
+    public const LOGS_ACESSO_VER = 'logs.acesso.ver';
+
     /**
      * Todas as permissões, agrupadas para exibição no formulário de usuário.
      *
@@ -38,6 +40,7 @@ final class Permissions
             ],
             'Administração' => [
                 self::USUARIOS_GERENCIAR => 'Gerenciar usuários e permissões',
+                self::LOGS_ACESSO_VER => 'Ver logs de acesso (login/logout)',
             ],
         ];
     }
