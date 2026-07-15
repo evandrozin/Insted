@@ -20,9 +20,11 @@
                     <td>{{ $m->turma }}</td>
                     <td>{{ $m->ra }}</td>
                     <td>{{ $m->aluno }}</td>
+                    <td>{{ $m->pagador_cpf }}</td>
                     <td>{{ $m->aluno_email }}</td>
                     <td>{{ $m->periodo_letivo }}</td>
                     <td>{{ $m->status }}</td>
+                    <td>{{ $m->inadimplente ? 'Inadimplente' : 'Adimplente' }}</td>
                 </tr>
             @endforeach
         </tbody>

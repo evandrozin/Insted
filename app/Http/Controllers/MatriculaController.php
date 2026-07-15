@@ -27,7 +27,9 @@ class MatriculaController extends Controller
         $totalContexto = (clone $base)->count();
 
         // Lista paginada: aplica também o filtro de status.
-        $lista = (clone $base)->select('matriculas.*', 'periodos_letivos.ano as pl_ano');
+        $lista = (clone $base)
+            ->select('matriculas.*', 'periodos_letivos.ano as pl_ano')
+            ->selectRaw($this->selectInadimplente());
         if ($request->filled('status')) {
             $lista->where('matriculas.status', $request->status);
         }
@@ -99,6 +101,28 @@ class MatriculaController extends Controller
         if ($request->filled('turma')) {
             $query->where('matriculas.id_turma', $request->turma);
         }
+        if ($request->filled('adimplencia')) {
+            $existeTitulo = function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('titulos_abertos as t')
+                    ->whereColumn('t.id_matricula', 'matriculas.id_matricula');
+            };
+            if ($request->adimplencia === 'inadimplente') {
+                $query->whereExists($existeTitulo);
+            } elseif ($request->adimplencia === 'adimplente') {
+                $query->whereNotExists($existeTitulo);
+            }
+        }
+    }
+
+    /**
+     * Expressão SQL que marca a matrícula como inadimplente (1) quando há
+     * título em aberto/vencido vinculado a ela em titulos_abertos.
+     * (a tabela já contém apenas títulos ABERTO e vencidos).
+     */
+    protected function selectInadimplente(): string
+    {
+        return 'CASE WHEN EXISTS (SELECT 1 FROM titulos_abertos t WHERE t.id_matricula = matriculas.id_matricula) THEN 1 ELSE 0 END as inadimplente';
     }
 
     /**
@@ -219,7 +243,10 @@ class MatriculaController extends Controller
     /** Lista detalhada (Unidade, Curso, Turma, RA, Aluno, ...). */
     protected function exportarLista(Request $request, string $formato)
     {
-        $lista = $this->baseFiltrada($request)->select('matriculas.*');
+        $lista = $this->baseFiltrada($request)
+            ->select('matriculas.*')
+            ->selectRaw($this->selectInadimplente())
+            ->selectRaw('(SELECT t2.pagador_cpf FROM titulos_abertos t2 WHERE t2.id_matricula = matriculas.id_matricula LIMIT 1) as pagador_cpf');
         if ($request->filled('status')) {
             $lista->where('matriculas.status', $request->status);
         }
@@ -228,7 +255,7 @@ class MatriculaController extends Controller
             ->orderBy('matriculas.turma')
             ->orderBy('matriculas.aluno');
 
-        $colunas = ['Unidade', 'Curso', 'Turma', 'RA', 'Aluno', 'E-mail', 'Período', 'Status'];
+        $colunas = ['Unidade', 'Curso', 'Turma', 'RA', 'Aluno', 'CPF (pagador)', 'E-mail', 'Período', 'Status', 'Adimplência'];
 
         if ($formato === 'pdf') {
             return view('matriculas.export_lista_pdf', [
@@ -239,7 +266,7 @@ class MatriculaController extends Controller
 
         $linhas = function () use ($lista) {
             foreach ($lista->cursor() as $m) {
-                yield [$m->unidade_fisica, $m->curso, $m->turma, $m->ra, $m->aluno, $m->aluno_email, $m->periodo_letivo, $m->status];
+                yield [$m->unidade_fisica, $m->curso, $m->turma, $m->ra, $m->aluno, $m->pagador_cpf, $m->aluno_email, $m->periodo_letivo, $m->status, $m->inadimplente ? 'Inadimplente' : 'Adimplente'];
             }
         };
 

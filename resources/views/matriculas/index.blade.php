@@ -84,6 +84,14 @@
                         @endforeach
                     </select>
                 </div>
+                <div class="field">
+                    <label>Adimplência</label>
+                    <select name="adimplencia">
+                        <option value="">Todos</option>
+                        <option value="adimplente" @selected(request('adimplencia') === 'adimplente')>Adimplente</option>
+                        <option value="inadimplente" @selected(request('adimplencia') === 'inadimplente')>Inadimplente</option>
+                    </select>
+                </div>
                 <div class="page-actions">
                     <button class="btn primary" type="submit">Filtrar</button>
                     <a class="btn ghost" href="{{ route('matriculas.index') }}">Limpar</a>
@@ -136,6 +144,7 @@
                         <th>Aluno</th>
                         <th>Período</th>
                         <th>Status</th>
+                        <th>Adimplência</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -151,9 +160,10 @@
                             </td>
                             <td>{{ $m->periodo_letivo }}</td>
                             <td><span class="badge {{ $statusCor($m->status) }}">{{ $m->status ?: '—' }}</span></td>
+                            <td><span class="badge {{ $m->inadimplente ? 'err' : 'ok' }}">{{ $m->inadimplente ? 'Inadimplente' : 'Adimplente' }}</span></td>
                         </tr>
                     @empty
-                        <tr><td colspan="7"><div class="empty"><div class="big">▤</div>Nenhuma matrícula encontrada.<br><span style="font-size:13px;">Rode a <a href="{{ route('ingestao.index') }}">sincronização</a> para importar do JACAD.</span></div></td></tr>
+                        <tr><td colspan="8"><div class="empty"><div class="big">▤</div>Nenhuma matrícula encontrada.<br><span style="font-size:13px;">Rode a <a href="{{ route('ingestao.index') }}">sincronização</a> para importar do JACAD.</span></div></td></tr>
                     @endforelse
                 </tbody>
             </table>
