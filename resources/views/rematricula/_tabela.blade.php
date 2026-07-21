@@ -5,7 +5,7 @@
 --}}
 @php
     $idCols = count($dimensoes);                   // Unidade, Curso [, Turma]
-    $antCols = 5;                                  // Ativos, Formandos, Adimpl, Inadimpl, Vlr aberto
+    $antCols = 4;                                  // Ativos, Formandos, Adimpl, Inadimpl
     $proxCols = count($statusCols) + 2;            // status + Novos + % Remat
 @endphp
 <div class="card rmt-tabela" style="margin-top:22px;">
@@ -38,8 +38,7 @@
                     <th class="num" style="border-left:2px solid #bfe3e1;">Ativos</th>
                     <th class="num" style="color:#7c5cff;">Poss. form.</th>
                     <th class="num" style="color:#17a34a;">Adimpl.</th>
-                    <th class="num" style="color:#e5484d;">Inadimpl.</th>
-                    <th class="num" style="color:#b9770e;border-right:2px solid #bfe3e1;">Vlr. aberto</th>
+                    <th class="num" style="color:#e5484d;border-right:2px solid #bfe3e1;">Inadimpl.</th>
                     @foreach ($statusCols as $st)
                         <th class="num" style="color:{{ $corHex[$statusCor($st)] }};">{{ $st }}</th>
                     @endforeach
@@ -62,8 +61,7 @@
                         <td class="num" style="border-left:2px solid #eef0f3;"><strong>{{ number_format($linha['total'], 0, ',', '.') }}</strong></td>
                         <td class="num" style="color:#7c5cff;">{{ ($linha['formandos'] ?? 0) ? number_format($linha['formandos'], 0, ',', '.') : '·' }}</td>
                         <td class="num">{{ ($linha['adimpl'] ?? 0) ? number_format($linha['adimpl'], 0, ',', '.') : '·' }}</td>
-                        <td class="num" style="color:#e5484d;">{{ ($linha['inadimpl'] ?? 0) ? number_format($linha['inadimpl'], 0, ',', '.') : '·' }}</td>
-                        <td class="num muted" style="border-right:2px solid #eef0f3;">{{ ($linha['valor_inad'] ?? 0) ? 'R$ '.number_format($linha['valor_inad'], 2, ',', '.') : '·' }}</td>
+                        <td class="num" style="color:#e5484d;border-right:2px solid #eef0f3;">{{ ($linha['inadimpl'] ?? 0) ? number_format($linha['inadimpl'], 0, ',', '.') : '·' }}</td>
                         @foreach ($statusCols as $st)
                             <td class="num">{{ ($linha['status'][$st] ?? 0) ? number_format($linha['status'][$st], 0, ',', '.') : '·' }}</td>
                         @endforeach
@@ -88,8 +86,7 @@
                         <td class="num" style="border-left:2px solid #eef0f3;">{{ number_format($totais['total'] ?? 0, 0, ',', '.') }}</td>
                         <td class="num" style="color:#7c5cff;">{{ number_format($totais['formandos'] ?? 0, 0, ',', '.') }}</td>
                         <td class="num">{{ number_format($totais['adimpl'] ?? 0, 0, ',', '.') }}</td>
-                        <td class="num" style="color:#e5484d;">{{ number_format($totais['inadimpl'] ?? 0, 0, ',', '.') }}</td>
-                        <td class="num" style="border-right:2px solid #eef0f3;">R$ {{ number_format($totais['valor_inad'] ?? 0, 2, ',', '.') }}</td>
+                        <td class="num" style="color:#e5484d;border-right:2px solid #eef0f3;">{{ number_format($totais['inadimpl'] ?? 0, 0, ',', '.') }}</td>
                         @foreach ($statusCols as $st)
                             <td class="num">{{ number_format($totais[$st] ?? 0, 0, ',', '.') }}</td>
                         @endforeach

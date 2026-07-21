@@ -21,14 +21,20 @@ class RegistrarAtividade
     public function handle(Request $request, Closure $next): Response
     {
         if (Auth::check() && $request->hasSession()) {
-            DB::table('login_logs')
-                ->where('session_id', $request->session()->getId())
-                ->whereNull('logged_out_at')
-                ->where(function ($q) {
-                    $q->whereNull('last_activity_at')
-                        ->orWhere('last_activity_at', '<=', now()->subSeconds(60));
-                })
-                ->update(['last_activity_at' => now()]);
+            // O heartbeat é acessório: qualquer falha aqui (tabela ausente,
+            // indisponibilidade do banco) NÃO pode derrubar a navegação.
+            try {
+                DB::table('login_logs')
+                    ->where('session_id', $request->session()->getId())
+                    ->whereNull('logged_out_at')
+                    ->where(function ($q) {
+                        $q->whereNull('last_activity_at')
+                            ->orWhere('last_activity_at', '<=', now()->subSeconds(60));
+                    })
+                    ->update(['last_activity_at' => now()]);
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
 
         return $next($request);

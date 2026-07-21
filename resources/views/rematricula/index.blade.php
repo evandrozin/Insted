@@ -82,7 +82,6 @@
                     ['Taxa de rematrícula', $resumo['taxa'].'%', '#2C2F36'],
                     ['Adimplentes (ant.)', number_format($resumo['adimplentes'],0,',','.'), '#17a34a'],
                     ['Inadimplentes (ant.)', number_format($resumo['inadimplentes'],0,',','.'), '#e5484d'],
-                    ['Valor em aberto', 'R$ '.number_format($resumo['valor_inadimplente'],2,',','.'), '#b9770e'],
                 ];
             @endphp
             @foreach ($cards as [$lab, $val, $cor])
@@ -119,7 +118,7 @@
         ])
 
         <div class="alert" style="background:#fdf6e3;border:1px solid #f0e2b8;color:#8a6d1a;margin-top:18px;">
-            <strong>Inadimplência:</strong> considera-se <strong>inadimplente</strong> o aluno com título <em>em aberto e vencido do período anterior ({{ $pAnterior->descricao ?? '' }}) ou de períodos anteriores a ele</em>. Dívidas de períodos posteriores não contam aqui. O valor em aberto é a soma desses títulos vencidos acumulados até o período anterior.
+            <strong>Inadimplência:</strong> considera-se <strong>inadimplente</strong> o aluno com título <em>em aberto e vencido do período anterior ({{ $pAnterior->descricao ?? '' }}) ou de períodos anteriores a ele</em>. Dívidas de períodos posteriores não contam aqui.
         </div>
     @endif
 @endsection

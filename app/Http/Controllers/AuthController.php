@@ -38,18 +38,23 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
-        // Registra o acesso (para a área de logs de login).
-        $usuario = Auth::user();
-        LoginLog::create([
-            'user_id' => $usuario->id,
-            'name' => $usuario->name,
-            'email' => $usuario->email,
-            'ip' => $request->ip(),
-            'user_agent' => substr((string) $request->userAgent(), 0, 512),
-            'session_id' => $request->session()->getId(),
-            'logged_in_at' => now(),
-            'last_activity_at' => now(),
-        ]);
+        // Registra o acesso (para a área de logs de login). O registro é
+        // acessório: uma falha aqui não pode impedir o login.
+        try {
+            $usuario = Auth::user();
+            LoginLog::create([
+                'user_id' => $usuario->id,
+                'name' => $usuario->name,
+                'email' => $usuario->email,
+                'ip' => $request->ip(),
+                'user_agent' => substr((string) $request->userAgent(), 0, 512),
+                'session_id' => $request->session()->getId(),
+                'logged_in_at' => now(),
+                'last_activity_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         return redirect()->intended(route('dashboard'));
     }
@@ -58,14 +63,18 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         // Carimba a saída no log de acesso desta sessão (antes de invalidá-la).
-        DB::table('login_logs')
-            ->where('session_id', $request->session()->getId())
-            ->whereNull('logged_out_at')
-            ->update([
-                'logged_out_at' => now(),
-                'last_activity_at' => now(),
-                'logout_type' => 'manual',
-            ]);
+        try {
+            DB::table('login_logs')
+                ->where('session_id', $request->session()->getId())
+                ->whereNull('logged_out_at')
+                ->update([
+                    'logged_out_at' => now(),
+                    'last_activity_at' => now(),
+                    'logout_type' => 'manual',
+                ]);
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         Auth::logout();
         $request->session()->invalidate();
