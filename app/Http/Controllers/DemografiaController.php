@@ -8,6 +8,7 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Distribuição geográfica dos alunos (cidade e bairro), em gráficos de pizza.
@@ -44,8 +45,33 @@ class DemografiaController extends Controller
     {
         $periodos = PeriodoLetivo::orderByDesc('ano')->orderByDesc('semestre')
             ->get(['id_periodo_letivo', 'descricao', 'org_descricao', 'ano']);
-        $cursos = $this->cursosDoContexto($request);
 
+        return view('demografia.index', $this->computar($request) + [
+            'periodos' => $periodos,
+            'cursos' => $this->cursosDoContexto($request),
+            'temPerfis' => DB::table('perfis')->exists(),
+        ]);
+    }
+
+    /**
+     * Versão para impressão/PDF do mesmo relatório, com os filtros da tela.
+     * Ao contrário dos gráficos, as tabelas saem completas — é um relatório.
+     */
+    public function exportarPdf(Request $request)
+    {
+        return view('demografia.export_pdf', $this->computar($request) + [
+            'filtros' => $this->descreverFiltros($request),
+        ]);
+    }
+
+    /**
+     * Apura os números do relatório. Tela e PDF passam por aqui, para não
+     * existir a chance de divergirem.
+     *
+     * @return array<string, mixed>
+     */
+    protected function computar(Request $request): array
+    {
         $totalAlunos = (int) $this->base($request)->distinct()->count('matriculas.id_aluno');
 
         $porCidade = $this->agrupar($request, "
@@ -63,22 +89,42 @@ class DemografiaController extends Controller
             end
         ");
 
-        // Cobertura: quantos alunos têm endereço preenchido no perfil.
-        $semEndereco = $this->totalDoRotulo($porBairro, self::NAO_INFORMADO);
-        $semCidade = $this->totalDoRotulo($porCidade, self::NAO_INFORMADO);
-
-        return view('demografia.index', [
-            'periodos' => $periodos,
-            'cursos' => $cursos,
+        return [
             'totalAlunos' => $totalAlunos,
             'cidades' => $this->montarFatias($porCidade, $totalAlunos),
             'bairros' => $this->montarFatias($porBairro, $totalAlunos),
             'linhasCidade' => $this->montarLinhas($porCidade, $totalAlunos),
             'linhasBairro' => $this->montarLinhas($porBairro, $totalAlunos),
-            'semCidade' => $semCidade,
-            'semEndereco' => $semEndereco,
-            'temPerfis' => DB::table('perfis')->exists(),
-        ]);
+            // Cobertura: quantos alunos têm endereço preenchido no perfil.
+            'semCidade' => $this->totalDoRotulo($porCidade, self::NAO_INFORMADO),
+            'semEndereco' => $this->totalDoRotulo($porBairro, self::NAO_INFORMADO),
+        ];
+    }
+
+    /**
+     * Filtros aplicados, em texto, para o cabeçalho do relatório.
+     *
+     * @return array<string, string>
+     */
+    protected function descreverFiltros(Request $request): array
+    {
+        $filtros = [];
+
+        if ($request->filled('periodo')) {
+            $p = PeriodoLetivo::find($request->integer('periodo'));
+            $filtros['Período letivo'] = $p
+                ? trim($p->descricao.' · '.Str::of($p->org_descricao)->title())
+                : '#'.$request->integer('periodo');
+        }
+
+        if ($request->filled('curso')) {
+            $c = CursoBase::find($request->integer('curso'));
+            $filtros['Curso'] = $c
+                ? $c->nome_impressao.($c->modalidade ? ' - '.$c->modalidade : '')
+                : '#'.$request->integer('curso');
+        }
+
+        return $filtros ?: ['Abrangência' => 'Todos os períodos e cursos'];
     }
 
     /**

@@ -30,6 +30,7 @@
         .btn { display: inline-block; padding: 8px 14px; border-radius: 8px; background: var(--teal); color: #06403e; font-weight: 700; font-size: 12px; border: none; cursor: pointer; text-decoration: none; }
         @media print { .toolbar { display: none; } body { padding: 0; } }
     </style>
+    @stack('head')
 </head>
 <body>
     <div class="toolbar">

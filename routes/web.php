@@ -47,6 +47,7 @@ Route::middleware('auth')->group(function () {
     // Acadêmico — Demografia (cidade/bairro dos alunos)
     Route::middleware('can:'.Permissions::DEMOGRAFIA_VER)->group(function () {
         Route::get('/demografia', [DemografiaController::class, 'index'])->name('demografia.index');
+        Route::get('/demografia/exportar/pdf', [DemografiaController::class, 'exportarPdf'])->name('demografia.exportar');
     });
 
     Route::get('/periodos-letivos', [PeriodoLetivoController::class, 'index'])->name('periodos.index');

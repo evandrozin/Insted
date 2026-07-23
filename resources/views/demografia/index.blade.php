@@ -45,6 +45,7 @@
                 <div class="page-actions">
                     <button class="btn primary" type="submit">Filtrar</button>
                     <a class="btn ghost" href="{{ route('demografia.index') }}">Limpar</a>
+                    <a class="btn ghost" href="{{ route('demografia.exportar', request()->query()) }}" target="_blank">⬇ PDF</a>
                 </div>
             </form>
         </div>
