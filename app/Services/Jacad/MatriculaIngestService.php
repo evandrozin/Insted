@@ -307,6 +307,150 @@ class MatriculaIngestService
     }
 
     /**
+     * Sincroniza a tabela de cidades (referência de endereço).
+     * Fonte: GET /api/v1/basicos/locais/cidades
+     *
+     * @return int quantidade de cidades gravadas
+     */
+    public function sincronizarCidades(): int
+    {
+        $pageSize = $this->client->pageSize();
+        $pagina = 0;
+        $total = 0;
+        $totalPaginas = null;
+        $agora = now();
+
+        do {
+            $resp = $this->client->get('/api/v1/basicos/locais/cidades', [
+                'pageSize' => $pageSize,
+                'currentPage' => $pagina,
+            ]);
+            $elementos = $resp->json('elements', []);
+            $totalPaginas ??= (int) $resp->json('page.totalPages', 0);
+
+            if (empty($elementos)) {
+                break;
+            }
+
+            $linhas = array_map(fn ($c) => [
+                'id_cidade' => $c['idCidade'],
+                'descricao' => $this->texto($c['descricao'] ?? null),
+                'id_estado' => $c['idEstado'] ?? null,
+                'uf' => $this->texto($c['uf'] ?? null),
+                'estado' => $this->texto($c['estado'] ?? null),
+                'codigo_ibge' => $this->texto($c['codigoIbge'] ?? null),
+                'id_pais' => $c['idPais'] ?? null,
+                'sincronizado_em' => $agora,
+                'created_at' => $agora,
+                'updated_at' => $agora,
+            ], $elementos);
+
+            DB::table('cidades')->upsert($linhas, ['id_cidade'],
+                ['descricao', 'id_estado', 'uf', 'estado', 'codigo_ibge', 'id_pais', 'sincronizado_em', 'updated_at']);
+
+            $total += count($elementos);
+            $pagina++;
+        } while ($totalPaginas > 0 && $pagina < $totalPaginas);
+
+        $this->log("Cidades sincronizadas: {$total}");
+
+        return $total;
+    }
+
+    /**
+     * Sincroniza os perfis (pessoas) com o endereço — é daqui que saem a
+     * cidade e o bairro do aluno, ligados por matriculas.id_perfil_aluno.
+     *
+     * Usa o v1: o v2 (`/api/v2/basicos/perfis`) devolve o mesmo erro de SQL
+     * do backend do JACAD que afeta o v2 de matrículas.
+     *
+     * @return int quantidade de perfis gravados
+     */
+    public function sincronizarPerfis(): int
+    {
+        $pageSize = $this->client->pageSize();
+        $pagina = 0;
+        $total = 0;
+        $totalPaginas = null;
+        $agora = now();
+
+        do {
+            $resp = $this->client->get('/api/v1/basicos/perfis', [
+                'pageSize' => $pageSize,
+                'currentPage' => $pagina,
+            ]);
+            $elementos = $resp->json('elements', []);
+            $totalPaginas ??= (int) $resp->json('page.totalPages', 0);
+
+            if (empty($elementos)) {
+                break;
+            }
+
+            $linhas = array_map(fn ($p) => [
+                'id_perfil' => $p['idPerfil'],
+                'nome' => $this->texto($p['nome'] ?? null),
+                'cpf' => $this->texto($p['cpf'] ?? null),
+                'id_cidade' => $p['idCidadeEndereco'] ?? null,
+                'bairro' => $this->texto($p['bairro'] ?? null),
+                'logradouro' => $this->texto($p['logradouro'] ?? null),
+                'numero' => $this->texto($p['numero'] ?? null),
+                'complemento' => $this->texto($p['complemento'] ?? null),
+                'cep' => $this->texto($p['cep'] ?? null),
+                'sincronizado_em' => $agora,
+                'created_at' => $agora,
+                'updated_at' => $agora,
+            ], $elementos);
+
+            DB::table('perfis')->upsert($linhas, ['id_perfil'],
+                ['nome', 'cpf', 'id_cidade', 'bairro', 'logradouro', 'numero', 'complemento', 'cep', 'sincronizado_em', 'updated_at']);
+
+            $total += count($elementos);
+            $pagina++;
+            $this->log("  perfis: página {$pagina}/".max($totalPaginas, 1)." (total {$total})");
+
+            usleep(((int) config('jacad.sleep_ms_entre_paginas', 150)) * 1000);
+        } while ($totalPaginas > 0 && $pagina < $totalPaginas);
+
+        $this->log("Perfis sincronizados: {$total}");
+
+        return $total;
+    }
+
+    /**
+     * Sincroniza cidades + perfis (dados de endereço do aluno) registrando
+     * um log de ingestão — usado pelo botão do painel de sincronização.
+     */
+    public function sincronizarDemografia(): IngestaoLog
+    {
+        $reg = IngestaoLog::create([
+            'tipo' => 'demografia',
+            'referencia' => 'cidades+perfis',
+            'status' => 'executando',
+            'iniciado_em' => now(),
+        ]);
+
+        try {
+            $cidades = $this->sincronizarCidades();
+            $perfis = $this->sincronizarPerfis();
+
+            $reg->marcarConcluido($perfis, 0, "Cidades: {$cidades} | Perfis: {$perfis}");
+
+            return $reg;
+        } catch (\Throwable $e) {
+            $reg->marcarErro($e->getMessage());
+            throw $e;
+        }
+    }
+
+    /** Normaliza texto da API: string vazia vira null. */
+    protected function texto(mixed $v): ?string
+    {
+        $v = is_string($v) ? trim($v) : $v;
+
+        return ($v === null || $v === '') ? null : (string) $v;
+    }
+
+    /**
      * Sincroniza os títulos (receitas) em aberto e VENCIDOS, para determinar
      * inadimplência. Fonte: GET /api/v1/financeiro/consolidacao/receitas
      * (read-only). Considera vencimentos de 2010-01-01 até hoje.

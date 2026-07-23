@@ -42,6 +42,23 @@ class IngestaoController extends Controller
         }
     }
 
+    /**
+     * Dispara a sincronização de cidades + perfis (endereço do aluno), que
+     * alimenta o painel de Demografia.
+     */
+    public function sincronizarDemografia()
+    {
+        @set_time_limit(0);
+
+        try {
+            $reg = (new MatriculaIngestService(new JacadClient()))->sincronizarDemografia();
+
+            return back()->with('sucesso', "Dados de endereço atualizados. {$reg->mensagem}.");
+        } catch (\Throwable $e) {
+            return back()->with('erro', 'Falha ao sincronizar os perfis: '.$e->getMessage());
+        }
+    }
+
     /** Testa a conexão com o JACAD. */
     public function testar()
     {

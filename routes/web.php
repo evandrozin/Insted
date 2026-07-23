@@ -4,6 +4,7 @@ use App\Http\Controllers\ApiParametroController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CursoBaseController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DemografiaController;
 use App\Http\Controllers\IngestaoController;
 use App\Http\Controllers\LoginLogController;
 use App\Http\Controllers\MatriculaController;
@@ -43,6 +44,11 @@ Route::middleware('auth')->group(function () {
             ->name('rematricula.exportar');
     });
 
+    // Acadêmico — Demografia (cidade/bairro dos alunos)
+    Route::middleware('can:'.Permissions::DEMOGRAFIA_VER)->group(function () {
+        Route::get('/demografia', [DemografiaController::class, 'index'])->name('demografia.index');
+    });
+
     Route::get('/periodos-letivos', [PeriodoLetivoController::class, 'index'])->name('periodos.index');
     Route::post('/periodos-letivos/sincronizar', [PeriodoLetivoController::class, 'sincronizar'])
         ->middleware('can:'.Permissions::DADOS_SINCRONIZAR)->name('periodos.sincronizar');
@@ -51,6 +57,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('can:'.Permissions::DADOS_SINCRONIZAR)->group(function () {
         Route::get('/ingestao', [IngestaoController::class, 'index'])->name('ingestao.index');
         Route::post('/ingestao/sincronizar', [IngestaoController::class, 'sincronizar'])->name('ingestao.sincronizar');
+        Route::post('/ingestao/sincronizar-demografia', [IngestaoController::class, 'sincronizarDemografia'])->name('ingestao.sincronizar-demografia');
         Route::post('/ingestao/testar', [IngestaoController::class, 'testar'])->name('ingestao.testar');
     });
 

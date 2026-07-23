@@ -13,9 +13,11 @@ class SyncMatriculas extends Command
                             {--somente-periodos : Apenas atualiza a lista de períodos letivos}
                             {--somente-cursos : Apenas atualiza os cursos base}
                             {--somente-turmas : Apenas atualiza as turmas}
-                            {--somente-titulos : Apenas atualiza os títulos em aberto (inadimplência)}';
+                            {--somente-titulos : Apenas atualiza os títulos em aberto (inadimplência)}
+                            {--somente-cidades : Apenas atualiza a tabela de cidades}
+                            {--somente-perfis : Apenas atualiza os perfis (endereço: cidade/bairro do aluno)}';
 
-    protected $description = 'Sincroniza períodos letivos, cursos, turmas e matrículas do JACAD para o Postgres';
+    protected $description = 'Sincroniza períodos letivos, cursos, turmas, perfis e matrículas do JACAD para o Postgres';
 
     public function handle(): int
     {
@@ -50,10 +52,25 @@ class SyncMatriculas extends Command
                 return self::SUCCESS;
             }
 
-            // Full: garante períodos, cursos, matrizes, turmas e títulos antes das matrículas.
+            if ($this->option('somente-cidades')) {
+                $this->info('Concluído: '.$service->sincronizarCidades().' cidades.');
+
+                return self::SUCCESS;
+            }
+
+            if ($this->option('somente-perfis')) {
+                $service->sincronizarCidades();
+                $this->info('Concluído: '.$service->sincronizarPerfis().' perfis.');
+
+                return self::SUCCESS;
+            }
+
+            // Full: garante períodos, cursos, matrizes, turmas, endereços e títulos antes das matrículas.
             $service->sincronizarCursosBase();
             $service->sincronizarMatrizes();
             $service->sincronizarTurmas($ano);
+            $service->sincronizarCidades();
+            $service->sincronizarPerfis();
             $service->sincronizarTitulosAbertos();
 
             $this->info($ano ? "Sincronizando matrículas do ano {$ano}..." : 'Sincronizando matrículas de todos os anos...');

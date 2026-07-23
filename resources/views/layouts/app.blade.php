@@ -164,13 +164,16 @@
             <div class="group">Visão Geral</div>
             <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'active' : '' }}"><span class="ico">◧</span> Dashboard</a>
 
-            @canany([\App\Support\Permissions::MATRICULAS_VER, \App\Support\Permissions::REMATRICULA_VER])
+            @canany([\App\Support\Permissions::MATRICULAS_VER, \App\Support\Permissions::REMATRICULA_VER, \App\Support\Permissions::DEMOGRAFIA_VER])
                 <div class="group">Acadêmico</div>
                 @can(\App\Support\Permissions::MATRICULAS_VER)
                     <a href="{{ route('matriculas.index') }}" class="{{ request()->routeIs('matriculas.*') ? 'active' : '' }}"><span class="ico">▤</span> Matrículas</a>
                 @endcan
                 @can(\App\Support\Permissions::REMATRICULA_VER)
                     <a href="{{ route('rematricula.index') }}" class="{{ request()->routeIs('rematricula.*') ? 'active' : '' }}"><span class="ico">⇄</span> Rematrícula</a>
+                @endcan
+                @can(\App\Support\Permissions::DEMOGRAFIA_VER)
+                    <a href="{{ route('demografia.index') }}" class="{{ request()->routeIs('demografia.*') ? 'active' : '' }}"><span class="ico">◍</span> Demografia</a>
                 @endcan
                 @can(\App\Support\Permissions::MATRICULAS_VER)
                     <a href="{{ route('cursos.index') }}" class="{{ request()->routeIs('cursos.*') ? 'active' : '' }}"><span class="ico">▦</span> Cursos</a>

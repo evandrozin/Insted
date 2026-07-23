@@ -38,6 +38,12 @@
                     @csrf
                     <button class="btn dark" type="submit">⇄ Testar conexão</button>
                 </form>
+                <hr style="border:0;border-top:1px solid var(--line);margin:18px 0;">
+                <p class="muted" style="margin-top:0;">Importa cidades e perfis (endereço do aluno) — base do painel de <a href="{{ route('demografia.index') }}">Demografia</a>.</p>
+                <form method="POST" action="{{ route('ingestao.sincronizar-demografia') }}">
+                    @csrf
+                    <button class="btn ghost" type="submit" onclick="this.innerHTML='◍ Importando...';this.disabled=true;this.form.submit();">◍ Sincronizar endereços</button>
+                </form>
                 <div class="alert info" style="margin-top:16px;margin-bottom:0;font-size:12.5px;">
                     <strong>Atenção:</strong> o token JACAD tem restrição por IP. O IP do servidor onde este sistema roda precisa estar autorizado no painel JACAD (Integrações → API de Integrações → Tokens de Acesso).
                 </div>

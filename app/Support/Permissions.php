@@ -14,6 +14,8 @@ final class Permissions
 
     public const REMATRICULA_VER = 'rematricula.ver';
 
+    public const DEMOGRAFIA_VER = 'demografia.ver';
+
     public const DADOS_SINCRONIZAR = 'dados.sincronizar';
 
     public const PARAMETROS_GERENCIAR = 'parametros.gerenciar';
@@ -33,6 +35,7 @@ final class Permissions
             'Acadêmico' => [
                 self::MATRICULAS_VER => 'Acessar dados de matrícula (e exportar)',
                 self::REMATRICULA_VER => 'Acessar dados de rematrícula (e exportar)',
+                self::DEMOGRAFIA_VER => 'Acessar a demografia dos alunos (cidade/bairro)',
             ],
             'Integração' => [
                 self::DADOS_SINCRONIZAR => 'Sincronizar dados com o JACAD',
